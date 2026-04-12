@@ -22,7 +22,7 @@ impl<'a> Iterator for ArrayIter<'a> {
     type Item = Object<'a>;
     fn next(&mut self) -> Option<Object<'a>> {
         if self.idx != self.len {
-            let elem = self.arr.get_element(self.idx);
+            let elem = self.arr.get(self.idx);
             self.idx = unsafe {self.idx.unchecked_add(1)};
             Some(elem)
         } else {None}
@@ -43,7 +43,7 @@ impl<'a> Iterator for VectorIter<'a> {
     type Item = Object<'a>;
     fn next(&mut self) -> Option<Object<'a>> {
         if self.idx != self.len {
-            let elem = self.arr.get_element(self.idx).unwrap();
+            let elem = self.arr.get(self.idx).unwrap();
             self.idx = unsafe {self.idx.unchecked_add(1)};
             Some(elem)
         } else {None}

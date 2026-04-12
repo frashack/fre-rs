@@ -102,9 +102,10 @@ impl TryFrom<FREResult> for FfiError {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
-pub struct ActionScriptError<'a> (Object<'a>);// May be null if the caller does not want to receive this handle.
+pub struct ActionScriptError<'a> (Object<'a>);
 impl<'a> ActionScriptError<'a> {
     const IGNORED: ActionScriptError<'static> = ActionScriptError(null);
+    /// May be null if the caller does not want to receive this handle.
     pub fn thrown (self) -> Object<'a> {self.0}
 }
 impl Display for ActionScriptError<'_> {

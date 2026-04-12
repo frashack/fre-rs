@@ -38,9 +38,9 @@ fn context_initializer(frt: &FlashRuntime) -> FunctionSet {
     funcs
 }
 fre_rs::function! {
-    method_name (frt, _, args) -> Str {
+    method_name (frt, _, args) -> StringObject {
         frt.trace(args);
-        Str::new(frt, "Hello! Flash Runtime")
+        StringObject::new(frt, "Hello! Flash Runtime")
     }
 }
 ```

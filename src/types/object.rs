@@ -69,7 +69,7 @@ pub unsafe trait AsObject<'a>: Sized + Copy + Eq + Display + Into<FREObject> + I
     }
     /// Return [`Err`] if this is [`null`] or `undefined`.
     #[allow(non_snake_case)]
-    fn toString (self) -> Result<Str<'a>, ExternalError<'a>> {
+    fn toString (self) -> Result<StringObject<'a>, ExternalError<'a>> {
         const NAME: UCStr = unsafe {UCStr::from_literal_unchecked(c"toString")};
         self.call_method(NAME, None).map(|r|{unsafe {transmute(r)}})
     }

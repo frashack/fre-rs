@@ -1,3 +1,5 @@
+use std::i32;
+
 use super::*;
 
 
@@ -19,18 +21,17 @@ impl<'a> Array<'a> {
             Err(e)
         } else {Ok(())}
     }
-    pub fn get_element (self, index: u32) -> Object<'a> {
+    pub fn get (self, index: u32) -> Object<'a> {
         let mut obj = std::ptr::null_mut();
         let r = unsafe {FREGetArrayElementAt(self.as_ptr(), index, &mut obj)};
         debug_assert!(r.is_ok());
         debug_assert!(!obj.is_null());
         unsafe {transmute(obj)}
     }
-    pub fn set_element <O: AsObject<'a>> (self, index: u32, value: O) {
+    pub fn set <O: AsObject<'a>> (self, index: u32, value: O) {
         let r = unsafe {FRESetArrayElementAt(self.as_ptr(), index, value.as_ptr())};
         debug_assert!(r.is_ok());
     }
-    #[allow(unused_variables)]
     pub fn new (frt: &FlashRuntime<'a>, num_elements: Option<NonNegativeInt>) -> Self {
         let mut arg = null;
         let num_elements = num_elements.map(|v|{
@@ -41,12 +42,11 @@ impl<'a> Array<'a> {
         assert!(!obj.is_null());
         unsafe {transmute(obj)}
     }
-    #[allow(unused_variables)]
     pub fn from_slice (frt: &FlashRuntime<'a>, elements: &[Object<'a>]) -> Self {
         debug_assert!(elements.len() <= i32::MAX as usize);
         if elements.len() == 1 && elements[0].get_type() == Type::Number {
             let arr = Self::new(frt, NonNegativeInt::new(1));
-            arr.set_element(0, *unsafe {elements.get_unchecked(0)});
+            arr.set(0, *unsafe {elements.get_unchecked(0)});
             arr
         } else {
             let obj = Object::new(frt, Self::CLASS, Some(elements)).unwrap();
@@ -99,7 +99,7 @@ impl<'a> Vector<'a> {
         } else {Ok(())}
     }
     /// [`Err`]=> [FfiError::InvalidArgument];
-    pub fn get_element (self, index: u32) -> Result<Object<'a>, FfiError> {
+    pub fn get (self, index: u32) -> Result<Object<'a>, FfiError> {
         let mut obj = std::ptr::null_mut();
         let r = unsafe {FREGetArrayElementAt(self.as_ptr(), index, &mut obj)};
         if let Ok(e) = FfiError::try_from(r) {
@@ -110,7 +110,7 @@ impl<'a> Vector<'a> {
         }
     }
     /// [`Err`]=> [FfiError::TypeMismatch];
-    pub fn set_element <O: AsObject<'a>> (self, index: u32, value: O) -> Result<(), FfiError> {
+    pub fn set <O: AsObject<'a>> (self, index: u32, value: O) -> Result<(), FfiError> {
         let r = unsafe {FRESetArrayElementAt(self.as_ptr(), index, value.as_ptr())};
         if let Ok(e) = FfiError::try_from(r) {
             Err(e)
@@ -186,7 +186,7 @@ impl<'a> BitmapData<'a> {
     {
         let mut descriptor = FREBitmapData2::default();
         let result = unsafe {FREAcquireBitmapData2(self.as_ptr(), &mut descriptor)};
-        debug_assert!(result.is_ok());
+        assert!(result.is_ok());
         let r = f(unsafe {BitmapDataAdapter::new(self.as_ptr(), descriptor)});
         let result = unsafe {FREReleaseBitmapData(self.as_ptr())};
         debug_assert!(result.is_ok());
@@ -219,3 +219,49 @@ impl From<Context3D<'_>> for FREObject {fn from(value: Context3D) -> Self {value
 impl<'a> From<Context3D<'a>> for Object<'a> {fn from(value: Context3D<'a>) -> Self {value.as_object()}}
 // impl<'a> TryFrom<Object<'a>> for Context3D<'a> {type Error = Type; fn try_from (value: Object<'a>) -> Result<Self, Type> {value.try_as()}}
 impl Display for Context3D<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {Display::fmt(&self.as_object(), f)}}
+
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct ErrorObject <'a> (NonNullFREObject, PhantomData<&'a()>);
+impl<'a> ErrorObject<'a> {
+    #[allow(non_snake_case)]
+    pub fn get_errorID(self) -> i32 {
+        const ERROR_ID: UCStr = unsafe {UCStr::from_literal_unchecked(c"errorID")};
+        let value = self.get_property(ERROR_ID).unwrap().try_into().unwrap();
+        value
+    }
+    const MESSAGE: UCStr = unsafe {UCStr::from_literal_unchecked(c"message")};
+    pub fn get_message(self) -> Option<StringObject<'a>> {
+        let value = self.get_property(Self::MESSAGE).unwrap().try_as().ok();
+        value
+    }
+    pub fn set_message(self, value: Option<StringObject>) {
+        let r = self.set_property(Self::MESSAGE, Object::from(value));
+        debug_assert!(r.is_ok());
+    }
+    const NAME: UCStr = unsafe {UCStr::from_literal_unchecked(c"name")};
+    pub fn get_name(self) -> Option<StringObject<'a>> {
+        let value = self.get_property(Self::NAME).unwrap().try_as().ok();
+        value
+    }
+    pub fn set_name(self, value: Option<StringObject>) {
+        let r = self.set_property(Self::NAME, Object::from(value));
+        debug_assert!(r.is_ok());
+    }
+    const CLASS: UCStr = unsafe {UCStr::from_literal_unchecked(c"Error")};
+    pub fn new (frt: &FlashRuntime<'a>, message: Option<&str>, id: i32) -> Self {
+        let message = message.map(|s|StringObject::new(frt, s));
+        let id = int::new(frt, id);
+        let args = vec![message.into(), id.as_object()].into_boxed_slice();
+        let err_obj= Object::new(frt, Self::CLASS, Some(args.as_ref())).unwrap();
+        assert!(!err_obj.is_null());
+        unsafe {transmute(err_obj)}
+    }
+}
+unsafe impl<'a> AsObject<'a> for ErrorObject<'a> {const TYPE: Type = Type::Error;}
+// unsafe impl<'a> TryAs<'a, ErrorObject<'a>> for Object<'a> {}
+impl From<ErrorObject<'_>> for FREObject {fn from(value: ErrorObject) -> Self {value.as_ptr()}}
+impl<'a> From<ErrorObject<'a>> for Object<'a> {fn from(value: ErrorObject<'a>) -> Self {value.as_object()}}
+// impl<'a> TryFrom<Object<'a>> for ErrorObject<'a> {type Error = Type; fn try_from (value: Object<'a>) -> Result<Self, Type> {value.try_as()}}
+impl Display for ErrorObject<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {Display::fmt(&self.as_object(), f)}}

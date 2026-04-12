@@ -24,6 +24,7 @@ pub enum Type {
     Null,
     Named(&'static str),
     Context3D,
+    Error,
     Unexpected(FREObjectType),
 }
 impl Type {

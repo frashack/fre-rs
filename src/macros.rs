@@ -1,4 +1,8 @@
+#[allow(unused_imports)]
+use super::*;
 
+
+/// 
 /// Generates and links the required Flash Runtime Extension entry points and lifecycle hooks,
 /// bridging the C ABI with safe Rust abstractions.
 /// 
@@ -49,9 +53,9 @@
 ///         funcs
 ///     }
 ///     fre_rs::function! {
-///         method_name (frt, _, args) -> Str {
+///         method_name (frt, _, args) -> StringObject {
 ///             frt.trace(args);
-///             Str::new(frt, "Hello! Flash Runtime")
+///             StringObject::new(frt, "Hello! Flash Runtime")
 ///         }
 ///     }
 /// }
@@ -113,6 +117,7 @@ macro_rules! extension {
             }
             *ctx_initializer_to_set = ctx_initializer;
             *ctx_finalizer_to_set = Some(ctx_finalizer);
+            $crate::extension! (@Hook);
         }
         #[allow(unsafe_op_in_unsafe_fn, non_snake_case)]
         #[unsafe(no_mangle)]
@@ -140,11 +145,49 @@ macro_rules! extension {
             assert!(!ctx_finalizer_to_set.is_null());
             *ctx_initializer_to_set = ctx_initializer;
             *ctx_finalizer_to_set = Some(ctx_finalizer);
+            $crate::extension! (@Hook);
         }
     };
+    (// #3
+        @Hook
+    ) => {
+        static INIT_HOOK: ::std::sync::Once = ::std::sync::Once::new();
+        INIT_HOOK.call_once(|| {
+            let default_hook = ::std::panic::take_hook();
+            ::std::panic::set_hook(Box::new(move |info| {
+                let payload = info.payload_as_str().unwrap_or_default();
+                let location = info.location()
+                    .map(|l| format!("at {}:{}:{}", l.file(), l.line(), l.column()))
+                    .unwrap_or_default();
+                let backtrace = ::std::backtrace::Backtrace::force_capture();
+                let s = format!("{payload}\n{location}\n{backtrace}");
+                $crate::_internal::LAST_PANIC_INFO.with(|i| {*i.borrow_mut() = Some(s);});
+                default_hook(info);
+            }));
+        });
+    }
 }
 
-/// Defines a function intended for context registration by generating its ABI-compatible wrapper and binding it to a Rust implementation.
+/// 
+/// Defines a function intended for context registration by generating its
+/// ABI-compatible wrapper and binding it to a Rust implementation.
+///
+/// # Panic Handling
+/// Any [`panic`] occurring within the function body is intercepted via
+/// [`std::panic::catch_unwind`]. Instead of unwinding across the FFI boundary,
+/// an [`ErrorObject`] containing the captured panic details is constructed and
+/// returned to the Flash Runtime.
+///
+/// This fallback return value is **NOT** constrained by the return type
+/// declared in the macro invocation. On the ActionScript side, the result may
+/// either be expected and handled as an `Error`, or not. In the latter case,
+/// if an [`ErrorObject`] is returned, casting it to a non-error type yields
+/// `null` and may lead to runtime exceptions.
+///
+/// When the [`ErrorObject`] is properly handled, the Flash Runtime remains
+/// stable. However, care must be taken to avoid leaving the native extension
+/// in an inconsistent state; resources should be managed reliably even in the
+/// presence of panics.
 /// 
 /// # Full Example
 /// ```
@@ -188,9 +231,10 @@ macro_rules! function {
                     args: &[$crate::types::Object<'a>],
                 ) -> $crate::types::Object<'a> {
                     $crate::function! {@Parameters [frt, func_data, args] $($arguments)+}
-                    (|| -> $crate::function!(@Return $($return_type)?) {
+                    let r = ::std::panic::catch_unwind(|| -> $crate::function!(@Return $($return_type)?) {
                         $body
-                    })().into()
+                    });
+                    $crate::function! (@Unwind [frt, r])
                 }
                 $crate::context::FlashRuntime::with_method(&ctx, func_data, argc, argv, func)
             }
@@ -211,7 +255,11 @@ macro_rules! function {
                 argv: *const $crate::c::markers::FREObject,
             ) -> $crate::c::markers::FREObject {
                 let func: $crate::function::Function = $func;
-                $crate::context::FlashRuntime::with_method(&ctx, func_data, argc, argv, func)
+                let r = ::std::panic::catch_unwind(|| -> $crate::c::markers::FREObject {
+                    $crate::context::FlashRuntime::with_method(&ctx, func_data, argc, argv, func)
+                });
+                let frt: $crate::context::FlashRuntime = ::std::mem::transmute(ctx);
+                $crate::function! (@Unwind [&frt, r])
             }
             abi},
         );
@@ -296,4 +344,20 @@ macro_rules! function {
             _frt, _data, _args
         }
     };
+    (// #13
+        @Unwind [$frt:expr_2021, $catched:expr_2021]
+    ) => {
+        match $catched {
+            Ok(r) => r.into(),
+            Err(_) => {
+                let info = $crate::_internal::LAST_PANIC_INFO.with(|i| {i.borrow_mut().take()});
+                let msg = info.as_ref()
+                    .map(|s|s.as_str())
+                    .unwrap_or("Panic occurred but no details were captured.");
+                let err = $crate::types::ErrorObject::new($frt, Some(msg), i32::MIN);
+                err.set_name(Some($crate::types::StringObject::new($frt, "Native Extension Panic Error")));
+                err.into()
+            },
+        }
+    }
 }

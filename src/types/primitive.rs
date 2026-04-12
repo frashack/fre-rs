@@ -111,8 +111,8 @@ impl Display for Boolean<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::
 /// Represents an ActionScript `String` object.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
-pub struct Str <'a> (NonNullFREObject, PhantomData<&'a()>);
-impl<'a> Str<'a> {
+pub struct StringObject <'a> (NonNullFREObject, PhantomData<&'a()>);
+impl<'a> StringObject<'a> {
     #[allow(unused_variables)]
     pub fn new (frt: &FlashRuntime<'a>, value: &str) -> Self {
         let value = value.as_bytes();
@@ -132,9 +132,9 @@ impl<'a> Str<'a> {
         unsafe {str::from_utf8_unchecked(bytes)}
     }
 }
-unsafe impl<'a> AsObject<'a> for Str<'a> {const TYPE: Type = Type::String;}
-unsafe impl<'a> TryAs<'a, Str<'a>> for Object<'a> {}
-impl From<Str<'_>> for FREObject {fn from(value: Str) -> Self {value.as_ptr()}}
-impl<'a> From<Str<'a>> for Object<'a> {fn from(value: Str<'a>) -> Self {value.as_object()}}
-impl<'a> TryFrom<Object<'a>> for Str<'a> {type Error = Type; fn try_from (value: Object<'a>) -> Result<Self, Type> {value.try_as()}}
-impl Display for Str<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {Display::fmt(self.value(), f)}}
+unsafe impl<'a> AsObject<'a> for StringObject<'a> {const TYPE: Type = Type::String;}
+unsafe impl<'a> TryAs<'a, StringObject<'a>> for Object<'a> {}
+impl From<StringObject<'_>> for FREObject {fn from(value: StringObject) -> Self {value.as_ptr()}}
+impl<'a> From<StringObject<'a>> for Object<'a> {fn from(value: StringObject<'a>) -> Self {value.as_object()}}
+impl<'a> TryFrom<Object<'a>> for StringObject<'a> {type Error = Type; fn try_from (value: Object<'a>) -> Result<Self, Type> {value.try_as()}}
+impl Display for StringObject<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {Display::fmt(self.value(), f)}}
