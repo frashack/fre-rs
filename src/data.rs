@@ -1,3 +1,8 @@
+//! 
+//! Abstractions for safe native data handling across the FFI boundary,
+//! including pointer passing, access, and lifecycle management.
+//! 
+
 use super::*;
 
 

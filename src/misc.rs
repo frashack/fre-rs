@@ -1,3 +1,10 @@
+//! 
+//! Miscellaneous items that do not yet have a clear module placement.
+//! Their current structure is not ideal and may be refactored as the crate
+//! evolves or as the underlying ANE C API improves.
+//! 
+
+
 use super::*;
 
 

@@ -6,7 +6,11 @@ use super::*;
 /// Generates and links the required Flash Runtime Extension entry points and lifecycle hooks,
 /// bridging the C ABI with safe Rust abstractions.
 /// 
-/// # Full Example
+/// This macro accepts up to four optional function arguments:
+/// [`Initializer`], [`Finalizer`], [`ContextInitializer`], and [`ContextFinalizer`],
+/// along with two external symbols for `extern "C"` functions.
+/// 
+/// ## Full Example
 /// ```
 /// mod lib {
 ///     use fre_rs::prelude::*;
@@ -39,7 +43,7 @@ use super::*;
 ///     }
 /// }
 /// ```
-/// # Minimal Example
+/// ## Minimal Example
 /// ```
 /// mod lib {
 ///     use fre_rs::prelude::*;
@@ -168,10 +172,14 @@ macro_rules! extension {
     }
 }
 
+
 /// 
 /// Defines a function intended for context registration by generating its
 /// ABI-compatible wrapper and binding it to a Rust implementation.
 ///
+/// Expands to a `&'static` constant of type [`FunctionDefinition`],
+/// intended to be added to a [`FunctionSet`].
+/// 
 /// # Panic Handling
 /// Any [`panic`] occurring within the function body is intercepted via
 /// [`std::panic::catch_unwind`]. Instead of unwinding across the FFI boundary,
@@ -189,7 +197,7 @@ macro_rules! extension {
 /// in an inconsistent state; resources should be managed reliably even in the
 /// presence of panics.
 /// 
-/// # Full Example
+/// ## Full Example
 /// ```
 /// mod lib {
 ///     use fre_rs::prelude::*;
@@ -202,7 +210,7 @@ macro_rules! extension {
 ///     fn method_implementation <'a> (frt: &FlashRuntime<'a>, data: Option<&mut dyn Any>, args: &[Object<'a>]) -> Object<'a> {null}
 /// }
 /// ```
-/// # Minimal Example
+/// ## Minimal Example
 /// ```
 /// mod lib {
 ///     fre_rs::function! {
@@ -361,3 +369,4 @@ macro_rules! function {
         }
     }
 }
+

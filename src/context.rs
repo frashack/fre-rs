@@ -1,3 +1,8 @@
+//! 
+//! Core implementation of the extension entry point abstraction.
+//! 
+
+
 use super::*;
 
 

@@ -1,3 +1,7 @@
+//! 
+//! Abstractions over ActionScript objects for integration with its type system.
+//! 
+
 mod classes;
 mod object;
 mod primitive;

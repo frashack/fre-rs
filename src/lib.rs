@@ -1,4 +1,11 @@
 //!
+//! Safe, ergonomic Rust abstraction over the AIR Native Extension (ANE) C API ([`fre-sys`](https://crates.io/crates/fre-sys)) for native-side development.
+//!
+//! ## Getting Started
+//!
+//! The primary entry points of this crate are the macros [`extension!`] and [`function!`].
+//! Refer to their documentation for details and examples.
+//!
 //! # Flash Runtime Extension Lifecycle
 //!
 //! ```text
@@ -33,6 +40,7 @@
 //!
 
 
+/// [`fre-sys`](https://crates.io/crates/fre-sys)
 pub mod c {
     pub use fre_sys::*;
 }

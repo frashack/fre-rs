@@ -24,6 +24,12 @@ Unsafe code is minimized and encapsulated, but correct usage of this crate's API
 
 MIT OR Apache-2.0
 
+## Getting Started
+
+The primary entry points of this crate are the macros [`extension!`] and [`function!`].
+
+Refer to their documentation for details and examples.
+
 ## Example
 
 ```rust

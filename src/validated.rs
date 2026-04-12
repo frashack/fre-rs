@@ -1,3 +1,8 @@
+//! 
+//! Validated types for safe interaction with the C API and the Flash Runtime,
+//! ensuring data passed across the FFI boundary is well-formed and valid.
+//! 
+
 use super::*;
 
 

@@ -1,3 +1,9 @@
+//! 
+//! Asynchronous event dispatching utilities for cross-thread scenarios,
+//! providing a safe interface for interacting with the Flash Runtime.
+//! 
+
+
 use super::*;
 
 
