@@ -14,10 +14,10 @@ use super::*;
 /// Therefore, all APIs on this type are safe to call, but their execution
 /// results cannot be guaranteed or reliably observed.
 #[derive(Debug, Clone, Copy)]
-pub struct EventDispatcher (pub(crate) FREContext);
+pub struct EventDispatcher (pub(crate) crate::context::ContextHandle);
 impl EventDispatcher {
     pub fn dispatch (&self, event: Event) {
-        let r = unsafe {FREDispatchStatusEventAsync(self.0, event.code.as_ptr(), event.level.as_ptr())};
+        let r = unsafe {FREDispatchStatusEventAsync(self.0.as_ptr(), event.code.as_ptr(), event.level.as_ptr())};
         debug_assert!(r.is_ok());
     }
     pub fn debug (&self, message: impl AsRef<str>) {

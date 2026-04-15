@@ -27,7 +27,7 @@
 //!    ┃  ┃                                             ┃
 //!    ┃  ┃                        Extension Data       ┃
 //!    ┃  ┃                              ↑              ┃
-//!    ┃  ┃    Context Data = `ContextRegistry`         ┃
+//!    ┃  ┃    Context Data ≈ `ContextRegistry`         ┃
 //!    ┃  ┃        ↓                     ↑              ┃
 //!    ┃  ┃    Context Finalizer    Function Data       ┃
 //!    ┃  ┃        ↑                                    ┃
@@ -40,17 +40,30 @@
 //!
 
 
-/// [`fre-sys`](https://crates.io/crates/fre-sys)
-pub mod c {
-    pub use fre_sys::*;
+
+pub mod as3 {
+    use super::*;
+    pub use crate::types::{
+        classes::{Array, Vector, ByteArray, BitmapData, Context3D, ErrorObject as Error},
+        object::{Object},
+        primitive::{int, uint, Number, Boolean, StringObject as String}
+    };
+    
+    /// Although `'static`, it must not be used outside the Flash runtime main thread,
+    /// or related APIs may return errors or panic due to failed assertions.
+    #[allow(non_upper_case_globals)]
+    pub const null: Object = unsafe {transmute(std::ptr::null_mut::<FREObject>())};
 }
+/// [`fre-sys`](https://crates.io/crates/fre-sys)
+pub mod c {pub use fre_sys::*;}
 pub mod prelude {
     pub use crate::{
-        context::*,
+        as3,
+        types::{Type, object::{AsObject, TryAs}},
+        context::{Context, CurrentContext},
         data::Data,
         event::*,
         function::FunctionSet,
-        types::*,
         validated::*,
     };
     pub use std::any::Any;
@@ -70,19 +83,21 @@ pub mod _internal;
 use {
     prelude::*,
     c::prelude::*,
+    data::ExtensionData,
     error::*,
     function::*,
     utils::*,
+    _internal::Sealed,
 };
 use std::{
-    cell::Cell,
+    cell::{RefCell},
     collections::HashMap,
     error::Error,
     ffi::{CStr, CString, NulError, c_void, c_char},
     fmt::{self, Debug, Display},
     marker::PhantomData,
-    mem::transmute,
-    ptr::NonNull,
+    mem::{transmute, size_of, size_of_val},
+    ptr::{NonNull},
     str::Utf8Error,
-    sync::Arc,
+    sync::{Arc, Mutex},
 };

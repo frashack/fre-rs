@@ -1,0 +1,15 @@
+<!-- https://help.adobe.com/en_US/air/extensions/WS901d38e593cd1bac-3004221412afa24c001-8000.html -->
+
+
+<extension xmlns="http://ns.adobe.com/air/extension/51.3">
+    <id>native-extension-id</id>
+    <versionNumber>0.1.0</versionNumber>
+    <platforms>
+        <platform name="Windows-x86-64">
+            <applicationDeployment>
+                <nativeLibrary>lib.dll</nativeLibrary>
+                <initializer>Initializer</initializer>
+            </applicationDeployment>
+        </platform>
+    </platforms>
+</extension>

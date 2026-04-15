@@ -2,13 +2,12 @@
 use super::*;
 
 
-/// 
 /// Generates and links the required Flash Runtime Extension entry points and lifecycle hooks,
 /// bridging the C ABI with safe Rust abstractions.
 /// 
-/// This macro accepts up to four optional function arguments:
-/// [`Initializer`], [`Finalizer`], [`ContextInitializer`], and [`ContextFinalizer`],
-/// along with two external symbols for `extern "C"` functions.
+/// This macro accepts two external symbols as arguments for `extern "C"` functions,
+/// and four functions: [`Initializer`], [`Finalizer`], [`ContextInitializer`], [`ContextFinalizer`].
+/// Some of these arguments are optional.
 /// 
 /// ## Full Example
 /// ```
@@ -23,23 +22,20 @@ use super::*;
 ///     impl Data for ExtensionData {}
 ///     fn initializer() -> Option<Box<dyn Any>> {Some(ExtensionData(0).into_boxed())}
 ///     fn finalizer(ext_data: Option<Box<dyn Any>>) {ExtensionData::from_boxed(ext_data.unwrap()).unwrap().0 = -1;}
-///     fn context_initializer(frt: &FlashRuntime) -> FunctionSet {
-///         let mut funcs = FunctionSet::new();
-///         let ctx_type = unsafe {frt.current_context().with(|ctx_reg| {
-///             ctx_reg.context_type()
-///         })}.unwrap();
-///         if ctx_type.is_some() {
-///             funcs.add(None, None::<()>, method_name);
+///     fn context_initializer(ctx: &CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet) {
+///         let mut funcs = FunctionSet::with_capacity(1);
+///         if ctx.ty().is_some() {
+///             funcs.add(None, None, method_name);
 ///         } else {
-///             funcs.add(None, None::<()>, method_name2);
+///             funcs.add(None, None, method_name2);
 ///         }
-///         return funcs;
+///         return (None, funcs);
 ///     }
-///     fn context_finalizer(frt: &FlashRuntime) {frt.current_context().set_actionscript_data(null).unwrap()}
-///     fn method_implementation <'a> (frt: &FlashRuntime<'a>, data: Option<&mut dyn Any>, args: &[Object<'a>]) -> Object<'a> {null}
+///     fn context_finalizer(ctx: &CurrentContext) {ctx.set_actionscript_data(as3::null)}
+///     fn method_implementation <'a> (ctx: &CurrentContext<'a>, data: Option<&mut dyn Any>, args: &[as3::Object<'a>]) -> as3::Object<'a> {as3::null}
 ///     fre_rs::function! (method_name use method_implementation);
 ///     fre_rs::function! {
-///         method_name2 (_, _, _) -> Option<Array> {None}
+///         method_name2 (_, _, _) -> Option<as3::Array> {None}
 ///     }
 /// }
 /// ```
@@ -51,19 +47,20 @@ use super::*;
 ///         extern symbol_initializer;
 ///         gen context_initializer, final;
 ///     }
-///     fn context_initializer(frt: &FlashRuntime) -> FunctionSet {
+///     fn context_initializer(_: &CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet) {
 ///         let mut funcs = FunctionSet::new();
-///         funcs.add(None, None::<()>, method_name);
-///         funcs
+///         funcs.add(None, None, method_name);
+///         (None, funcs)
 ///     }
 ///     fre_rs::function! {
-///         method_name (frt, _, args) -> StringObject {
-///             frt.trace(args);
-///             StringObject::new(frt, "Hello! Flash Runtime")
+///         method_name (ctx, _, args) -> as3::String {
+///             ctx.trace(args);
+///             as3::String::new(ctx, "Hello! Flash Runtime.")
 ///         }
 ///     }
 /// }
 /// ```
+/// 
 #[macro_export]
 macro_rules! extension {
     {// #0
@@ -84,17 +81,21 @@ macro_rules! extension {
                 funcs_to_set: *mut *const $crate::c::ffi::FRENamedFunction,
             ) {
                 let context_initializer: $crate::function::ContextInitializer = $context_initializer;
-                $crate::context::FlashRuntime::with_context_initializer(ext_data, ctx_type, &ctx, num_funcs_to_set, funcs_to_set, $context_initializer);
+                $crate::context::CurrentContext::with_context_initializer(ext_data, ctx_type, &ctx, num_funcs_to_set, funcs_to_set, $context_initializer);
             }
             #[allow(unsafe_op_in_unsafe_fn)]
             unsafe extern "C" fn ctx_finalizer (ctx: $crate::c::markers::FREContext) {
-                $crate::context::FlashRuntime::with(&ctx, |frt| {
+                $crate::context::CurrentContext::with(&ctx, |ctx| {
                     $(
                         let context_finalizer: $crate::function::ContextFinalizer = $context_finalizer;
-                        context_finalizer(frt);
+                        context_finalizer(ctx);
                     )?
-                    let raw = $crate::validated::NonNullFREData::new(frt.current_context().get_native_data().expect("Failed to retrieve native data from FFI.")).expect("`ContextRegistry` is expected in native data but is missing.");
-                    assert!(<$crate::context::ContextRegistry as $crate::data::Data>::ref_from(raw).is_ok());
+                    let ctx = *(ctx as *const $crate::context::CurrentContext as *const $crate::context::ForeignContext);
+                    let raw = ctx
+                        .get_native_data()
+                        .expect("Failed to retrieve native data from FFI.")
+                        .expect("`ContextRegistry` is expected in native data but is missing.");
+                    assert!(<::std::cell::RefCell<$crate::context::ContextRegistry> as $crate::data::Data>::ref_from(raw).is_ok());
                     $crate::data::drop_from(raw);
                 });
 
@@ -102,7 +103,7 @@ macro_rules! extension {
         }
         };
     };
-    {// #1``
+    {// #1
         @Extern [$symbol_initializer:ident, $symbol_finalizer:ident, $initializer:path $(, $finalizer:path)?]
     } => {
         #[allow(unsafe_op_in_unsafe_fn, non_snake_case)]
@@ -117,7 +118,8 @@ macro_rules! extension {
             assert!(!ctx_finalizer_to_set.is_null());
             let initializer: $crate::function::Initializer = $initializer;
             if let Some(ext_data) = initializer() {
-                *ext_data_to_set = $crate::data::into_raw(ext_data).as_ptr();
+                let ext_data = ::std::sync::Arc::new(::std::sync::Mutex::new(ext_data));
+                *ext_data_to_set = <::std::sync::Arc<::std::sync::Mutex<Box<dyn ::std::any::Any>>> as $crate::data::Data>::into_raw(ext_data).as_ptr();
             }
             *ctx_initializer_to_set = ctx_initializer;
             *ctx_finalizer_to_set = Some(ctx_finalizer);
@@ -127,7 +129,12 @@ macro_rules! extension {
         #[unsafe(no_mangle)]
         pub unsafe extern "C" fn $symbol_finalizer (ext_data: $crate::c::markers::FREData) {
             let ext_data = $crate::validated::NonNullFREData::new(ext_data)
-                .map(|raw| $crate::data::from_raw(raw));
+                .map(|raw| {
+                    let arc_mutex_boxed = <::std::sync::Arc<::std::sync::Mutex<Box<dyn ::std::any::Any>>> as $crate::data::Data>::from_raw(raw);
+                    let mutex = ::std::sync::Arc::try_unwrap(arc_mutex_boxed).expect("INVARIANT: No context exists.");
+                    let boxed = mutex.into_inner().expect("Mutex poisoned.");
+                    boxed
+                });
             $(
                 let finalizer: $crate::function::Finalizer = $finalizer;
                 finalizer(ext_data);
@@ -173,26 +180,34 @@ macro_rules! extension {
 }
 
 
-/// 
 /// Defines a function intended for context registration by generating its
 /// ABI-compatible wrapper and binding it to a Rust implementation.
 ///
-/// Expands to a `&'static` constant of type [`FunctionDefinition`],
+/// Expands to a `&'static` constant of type [`FunctionImplementation`],
 /// intended to be added to a [`FunctionSet`].
 /// 
+/// This macro supports two forms:
+/// one that defines a function inline, and another that binds to an existing
+/// [`Function`] using the `use` keyword.
+///
+/// For larger or more complex implementations, the latter can provide better
+/// IDE support. However, it introduces two distinct items with the same
+/// semantics, so naming should be chosen carefully to avoid confusion.
+/// 
 /// # Panic Handling
+/// 
 /// Any [`panic`] occurring within the function body is intercepted via
 /// [`std::panic::catch_unwind`]. Instead of unwinding across the FFI boundary,
-/// an [`ErrorObject`] containing the captured panic details is constructed and
+/// an [`as3::Error`] containing the captured panic details is constructed and
 /// returned to the Flash Runtime.
 ///
 /// This fallback return value is **NOT** constrained by the return type
 /// declared in the macro invocation. On the ActionScript side, the result may
 /// either be expected and handled as an `Error`, or not. In the latter case,
-/// if an [`ErrorObject`] is returned, casting it to a non-error type yields
+/// if an [`as3::Error`] is returned, casting it to a non-error type yields
 /// `null` and may lead to runtime exceptions.
 ///
-/// When the [`ErrorObject`] is properly handled, the Flash Runtime remains
+/// When the [`as3::Error`] is properly handled, the Flash Runtime remains
 /// stable. However, care must be taken to avoid leaving the native extension
 /// in an inconsistent state; resources should be managed reliably even in the
 /// presence of panics.
@@ -202,12 +217,12 @@ macro_rules! extension {
 /// mod lib {
 ///     use fre_rs::prelude::*;
 ///     fre_rs::function! {
-///         method_name (frt, data, args) -> Option<Object> {
-///             return frt.current_context().get_actionscript_data().ok();
+///         method_name (ctx, data, args) -> as3::Object {
+///             return ctx.get_actionscript_data();
 ///         }
 ///     }
 ///     fre_rs::function! (method_name2 use method_implementation);
-///     fn method_implementation <'a> (frt: &FlashRuntime<'a>, data: Option<&mut dyn Any>, args: &[Object<'a>]) -> Object<'a> {null}
+///     fn method_implementation <'a> (ctx: &CurrentContext<'a>, data: Option<&mut dyn Any>, args: &[as3::Object<'a>]) -> as3::Object<'a> {as3::null}
 /// }
 /// ```
 /// ## Minimal Example
@@ -218,13 +233,14 @@ macro_rules! extension {
 ///     }
 /// }
 /// ```
+/// 
 #[macro_export]
 macro_rules! function {
     {// #0
         $name:ident ($($arguments:tt)+) $(-> $return_type:ty)? $body:block
     } => {
         #[allow(non_upper_case_globals)]
-        pub const $name: &'static $crate::function::FunctionDefinition = & $crate::function::FunctionDefinition::new(
+        pub const $name: &'static $crate::function::FunctionImplementation = & $crate::function::FunctionImplementation::new(
             $crate::function!(@Name $name), {
             #[allow(unsafe_op_in_unsafe_fn)]
             unsafe extern "C" fn abi(
@@ -234,17 +250,17 @@ macro_rules! function {
                 argv: *const $crate::c::markers::FREObject,
             ) -> $crate::c::markers::FREObject {
                 fn func <'a> (
-                    frt: &$crate::context::FlashRuntime<'a>,
+                    ctx: &$crate::context::CurrentContext<'a>,
                     func_data: Option<&mut dyn ::std::any::Any>,
-                    args: &[$crate::types::Object<'a>],
-                ) -> $crate::types::Object<'a> {
-                    $crate::function! {@Parameters [frt, func_data, args] $($arguments)+}
+                    args: &[$crate::as3::Object<'a>],
+                ) -> $crate::as3::Object<'a> {
+                    $crate::function! {@Parameters [ctx, func_data, args] $($arguments)+}
                     let r = ::std::panic::catch_unwind(|| -> $crate::function!(@Return $($return_type)?) {
                         $body
                     });
-                    $crate::function! (@Unwind [frt, r])
+                    $crate::function! (@Unwind [ctx, r])
                 }
-                $crate::context::FlashRuntime::with_method(&ctx, func_data, argc, argv, func)
+                $crate::context::CurrentContext::with_method(&ctx, func_data, argc, argv, func)
             }
             abi},
         );
@@ -253,7 +269,7 @@ macro_rules! function {
         $name:ident use $func:path
     ) => {
         #[allow(non_upper_case_globals)]
-        pub const $name: &'static $crate::function::FunctionDefinition = & $crate::function::FunctionDefinition::new(
+        pub const $name: &'static $crate::function::FunctionImplementation = & $crate::function::FunctionImplementation::new(
             $crate::function!(@Name $name), {
             #[allow(unsafe_op_in_unsafe_fn)]
             unsafe extern "C" fn abi(
@@ -264,10 +280,10 @@ macro_rules! function {
             ) -> $crate::c::markers::FREObject {
                 let func: $crate::function::Function = $func;
                 let r = ::std::panic::catch_unwind(|| -> $crate::c::markers::FREObject {
-                    $crate::context::FlashRuntime::with_method(&ctx, func_data, argc, argv, func)
+                    $crate::context::CurrentContext::with_method(&ctx, func_data, argc, argv, func)
                 });
-                let frt: $crate::context::FlashRuntime = ::std::mem::transmute(ctx);
-                $crate::function! (@Unwind [&frt, r])
+                let ctx: $crate::context::CurrentContext = ::std::mem::transmute(ctx);
+                $crate::function! (@Unwind [&ctx, r])
             }
             abi},
         );
@@ -289,71 +305,71 @@ macro_rules! function {
         @Return
     ) => (());
     {// #5
-        @Parameters [$f:ident, $d:ident, $a:ident $(,)?]
-        $frt:ident, $data:ident, $args:ident $(,)?
+        @Parameters [$c:ident, $d:ident, $a:ident $(,)?]
+        $ctx:ident, $data:ident, $args:ident $(,)?
     } => {
-        let $frt: &$crate::context::FlashRuntime<'a> = $f;
+        let $ctx: &$crate::context::CurrentContext<'a> = $c;
         let $data: Option<&mut dyn ::std::any::Any> = $d;
-        let $args: &[$crate::types::Object<'a>] = $a;
+        let $args: &[$crate::as3::Object<'a>] = $a;
     };
     {// #6
-        @Parameters [$f:ident, $d:ident, $a:ident $(,)?]
-        $frt:ident, $data:ident, _ $(,)?
+        @Parameters [$c:ident, $d:ident, $a:ident $(,)?]
+        $ctx:ident, $data:ident, _ $(,)?
     } => {
-        $crate::function! {@Parameters [$f, $d, $a]
-            $frt, $data, _args
+        $crate::function! {@Parameters [$c, $d, $a]
+            $ctx, $data, _args
         }
     };
     {// #7
-        @Parameters [$f:ident, $d:ident, $a:ident $(,)?]
-        $frt:ident, _, $args:ident $(,)?
+        @Parameters [$c:ident, $d:ident, $a:ident $(,)?]
+        $ctx:ident, _, $args:ident $(,)?
     } => {
-        $crate::function! {@Parameters [$f, $d, $a]
-            $frt, _data, $args
+        $crate::function! {@Parameters [$c, $d, $a]
+            $ctx, _data, $args
         }
     };
     {// #8
-        @Parameters [$f:ident, $d:ident, $a:ident $(,)?]
+        @Parameters [$c:ident, $d:ident, $a:ident $(,)?]
         _, $data:ident, $args:ident $(,)?
     } => {
-        $crate::function! {@Parameters [$f, $d, $a]
-            _frt, $data, $args
+        $crate::function! {@Parameters [$c, $d, $a]
+            _ctx, $data, $args
         }
     };
     {// #9
-        @Parameters [$f:ident, $d:ident, $a:ident $(,)?]
+        @Parameters [$c:ident, $d:ident, $a:ident $(,)?]
         _, _, $args:ident $(,)?
     } => {
-        $crate::function! {@Parameters [$f, $d, $a]
-            _frt, _data, $args
+        $crate::function! {@Parameters [$c, $d, $a]
+            _ctx, _data, $args
         }
     };
     {// #10
-        @Parameters [$f:ident, $d:ident, $a:ident $(,)?]
+        @Parameters [$c:ident, $d:ident, $a:ident $(,)?]
         _, $data:ident, _ $(,)?
     } => {
-        $crate::function! {@Parameters [$f, $d, $a]
-            _frt, $data, _args
+        $crate::function! {@Parameters [$c, $d, $a]
+            _ctx, $data, _args
         }
     };
     {// #11
-        @Parameters [$f:ident, $d:ident, $a:ident $(,)?]
-        $frt:ident, _, _ $(,)?
+        @Parameters [$c:ident, $d:ident, $a:ident $(,)?]
+        $ctx:ident, _, _ $(,)?
     } => {
-        $crate::function! {@Parameters [$f, $d, $a]
-            $frt, _data, _args
+        $crate::function! {@Parameters [$c, $d, $a]
+            $ctx, _data, _args
         }
     };
     {// #12
-        @Parameters [$f:ident, $d:ident, $a:ident $(,)?]
+        @Parameters [$c:ident, $d:ident, $a:ident $(,)?]
         _, _, _ $(,)?
     } => {
-        $crate::function! {@Parameters [$f, $d, $a]
-            _frt, _data, _args
+        $crate::function! {@Parameters [$c, $d, $a]
+            _ctx, _data, _args
         }
     };
     (// #13
-        @Unwind [$frt:expr_2021, $catched:expr_2021]
+        @Unwind [$ctx:expr_2021, $catched:expr_2021]
     ) => {
         match $catched {
             Ok(r) => r.into(),
@@ -362,8 +378,8 @@ macro_rules! function {
                 let msg = info.as_ref()
                     .map(|s|s.as_str())
                     .unwrap_or("Panic occurred but no details were captured.");
-                let err = $crate::types::ErrorObject::new($frt, Some(msg), i32::MIN);
-                err.set_name(Some($crate::types::StringObject::new($frt, "Native Extension Panic Error")));
+                let err = $crate::as3::Error::new($ctx, Some(msg), i32::MIN);
+                err.set_name(Some($crate::as3::String::new($ctx, "Native Extension Panic Error")));
                 err.into()
             },
         }

@@ -1,0 +1,31 @@
+<!-- https://airsdk.dev/docs/building/application-descriptor-files/introduction -->
+
+
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<application xmlns="http://ns.adobe.com/air/application/51.3">
+  <id>AIR-App</id>
+  <versionNumber>0.0.1</versionNumber>
+  <filename>AIR-App</filename>
+  <description/>
+  <name>AIR-App</name>
+  <copyright>Frashack</copyright>
+  <initialWindow>
+    <content>application.swf</content>
+    <systemChrome>standard</systemChrome>
+    <visible>true</visible>
+    <fullScreen>false</fullScreen>
+    <aspectRatio>portrait</aspectRatio>
+    <renderMode>auto</renderMode>
+    <maximizable>false</maximizable>
+    <minimizable>false</minimizable>
+    <resizable>false</resizable>
+    <x>0</x>
+    <y>0</y>
+  </initialWindow>
+  <customUpdateUI>false</customUpdateUI>
+  <allowBrowserInvocation>false</allowBrowserInvocation>
+  <supportedProfiles>desktop extendedDesktop</supportedProfiles>
+  <extensions>
+    <extensionID>native-extension-id</extensionID>
+  </extensions>
+</application>

@@ -2,21 +2,23 @@
 //! Abstractions over ActionScript objects for integration with its type system.
 //! 
 
-mod classes;
-mod object;
-mod primitive;
 
-pub use {
+pub mod classes;
+pub mod object;
+pub mod primitive;
+
+use {
     classes::*,
     object::*,
     primitive::*,
 };
-
 use super::*;
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Type {
+    
+    // Supported by [`FREGetObjectType`].
     Object,
     Number,
     String,
@@ -26,10 +28,13 @@ pub enum Type {
     BitmapData,
     Boolean,
     Null,
+
+    // Not supported by [`FREGetObjectType`].
     Named(&'static str),
-    Context3D,
     Error,
+    Context3D,
     Unexpected(FREObjectType),
+
 }
 impl Type {
     pub fn is_null(self) -> bool {self == Self::Null}

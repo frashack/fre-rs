@@ -9,18 +9,18 @@ pub(crate) unsafe fn transmute_unchecked <T: Copy, U: Copy> (any: T) -> U {
 
 #[derive(Debug, Clone)]
 pub struct ArrayIter<'a> {
-    arr: Array<'a>,
+    arr: as3::Array<'a>,
     len: u32,
     idx: u32,
 }
 impl<'a> ArrayIter<'a> {
-    pub(crate) fn new (arr: Array<'a>) -> Self {
+    pub(crate) fn new (arr: as3::Array<'a>) -> Self {
         Self { arr, len: arr.get_length(), idx: 0 }
     }
 }
 impl<'a> Iterator for ArrayIter<'a> {
-    type Item = Object<'a>;
-    fn next(&mut self) -> Option<Object<'a>> {
+    type Item = as3::Object<'a>;
+    fn next(&mut self) -> Option<as3::Object<'a>> {
         if self.idx != self.len {
             let elem = self.arr.get(self.idx);
             self.idx = unsafe {self.idx.unchecked_add(1)};
@@ -30,18 +30,18 @@ impl<'a> Iterator for ArrayIter<'a> {
 }
 #[derive(Debug, Clone)]
 pub struct VectorIter<'a> {
-    arr: Vector<'a>,
+    arr: as3::Vector<'a>,
     len: u32,
     idx: u32,
 }
 impl<'a> VectorIter<'a> {
-    pub(crate) fn new (arr: Vector<'a>) -> Self {
+    pub(crate) fn new (arr: as3::Vector<'a>) -> Self {
         Self { arr, len: arr.get_length(), idx: 0 }
     }
 }
 impl<'a> Iterator for VectorIter<'a> {
-    type Item = Object<'a>;
-    fn next(&mut self) -> Option<Object<'a>> {
+    type Item = as3::Object<'a>;
+    fn next(&mut self) -> Option<as3::Object<'a>> {
         if self.idx != self.len {
             let elem = self.arr.get(self.idx).unwrap();
             self.idx = unsafe {self.idx.unchecked_add(1)};

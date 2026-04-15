@@ -1,14 +1,25 @@
 //! 
-//! Abstractions for safe native data handling across the FFI boundary,
-//! including pointer passing, access, and lifecycle management.
+//! This module provides safe conversions between concrete typed instances
+//! and raw pointers for native data.
 //! 
+//! [`Box<dyn Any>`] is a fat pointer stored on the stack. Casting it directly
+/// to a raw pointer will truncate its metadata. To preserve type information,
+/// the fat pointer must be stored intact on the heap, so it can be safely
+/// reconstructed from a raw pointer.
+/// 
+
 
 use super::*;
 
 
+pub(crate) type ExtensionData = Arc<Mutex<Box<dyn Any>>>;
+impl Data for ExtensionData {}
+
+
 /// Should be implemented for all native data types to ensure safe pointer passing
-/// and correct memory management. Native data includes extension data, context data,
-/// and function data.
+/// and correct memory management. Native data includes Extension Data, Context Data,
+/// and Function data.
+/// 
 pub trait Data: 'static + Sized {
     fn into_boxed (self) -> Box<dyn Any> {
         super::data::into_boxed(self)

@@ -17,7 +17,7 @@ impl<'a> ExternalError<'a> {
     /// # Notes
     /// When an ActionScript throw occurs, the provided object is assumed to be a valid [`FREObject`].
     /// However, ActionScript may throw [`null`].
-    pub fn try_from (result: FREResult, thrown: Option<Object<'a>>) -> Result<Self, ()> {
+    pub fn try_from (result: FREResult, thrown: Option<as3::Object<'a>>) -> Result<Self, ()> {
         let r = result.try_into();
         if let (Ok(Self::ActionScript(_)), Some(obj)) = (r, thrown) {
             return Ok(ActionScriptError(obj).into());
@@ -102,11 +102,11 @@ impl TryFrom<FREResult> for FfiError {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
-pub struct ActionScriptError<'a> (Object<'a>);
+pub struct ActionScriptError<'a> (as3::Object<'a>);
 impl<'a> ActionScriptError<'a> {
-    const IGNORED: ActionScriptError<'static> = ActionScriptError(null);
+    const IGNORED: ActionScriptError<'static> = ActionScriptError(as3::null);
     /// May be null if the caller does not want to receive this handle.
-    pub fn thrown (self) -> Object<'a> {self.0}
+    pub fn thrown (self) -> as3::Object<'a> {self.0}
 }
 impl Display for ActionScriptError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -119,11 +119,12 @@ impl Error for ActionScriptError<'_> {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ContextError {
     InvalidContext,
-    NullData,
-    UnexpectedData,
+    NullRegistry,
+    InvalidRegistry,
     MethodsNotRegistered,
     MethodNotFound,
     FfiCallFailed(FfiError),
+    BorrowRegistryConflict,
 }
 impl Display for ContextError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

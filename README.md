@@ -26,7 +26,7 @@ MIT OR Apache-2.0
 
 ## Getting Started
 
-The primary entry points of this crate are the macros [`extension!`] and [`function!`].
+The primary entry points of this crate are the macros [`extension!`](https://docs.rs/fre-rs/latest/fre_rs/macro.extension.html) and [`function!`](https://docs.rs/fre-rs/latest/fre_rs/macro.function.html).
 
 Refer to their documentation for details and examples.
 
@@ -35,18 +35,30 @@ Refer to their documentation for details and examples.
 ```rust
 use fre_rs::prelude::*;
 fre_rs::extension! {
-    extern symbol_initializer;
-    gen context_initializer, final;
+    extern Initializer;
+    gen init_ctx, final;
 }
-fn context_initializer(frt: &FlashRuntime) -> FunctionSet {
+fn init_ctx(_: &CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet) {
     let mut funcs = FunctionSet::new();
-    funcs.add(None, None::<()>, method_name);
-    funcs
+    funcs.add(None, None, hello);
+    (None, funcs)
 }
 fre_rs::function! {
-    method_name (frt, _, args) -> StringObject {
-        frt.trace(args);
-        StringObject::new(frt, "Hello! Flash Runtime")
+    hello (ctx, _, args) -> as3::String {
+        ctx.trace(args);
+        as3::String::new(ctx, "Hello! Flash Runtime.")
     }
 }
 ```
+
+The repository provides a [comprehensive example](https://github.com/frashack/fre-rs/tree/main/examples/windows-x86-64) of ANE integration within an AIR project.
+It covers the full development workflow, including native implementation (Rust),
+ActionScript 3.0 wrapper, and automated build script.
+
+To build and execute the example, ensure the following environment is configured:
+
+- Operating System: Windows 10+ (x86-64)
+- Rust Toolchain: version 1.85+ (supporting Edition 2024)
+- C++ Build Tools: Visual Studio Build Tools (MSVC)
+- AIR SDK: HARMAN AIR SDK (latest version recommended)
+- Java Runtime: JRE or JDK 8+ (required for the AIR Developer Tool)

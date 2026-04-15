@@ -1,2 +1,6 @@
-/target
+target
 Cargo.lock
+
+/examples/windows-x86-64/extensions
+/examples/windows-x86-64/application.swf
+/examples/windows-x86-64/temp

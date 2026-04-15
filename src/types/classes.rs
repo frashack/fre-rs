@@ -32,17 +32,17 @@ impl<'a> Array<'a> {
         let r = unsafe {FRESetArrayElementAt(self.as_ptr(), index, value.as_ptr())};
         debug_assert!(r.is_ok());
     }
-    pub fn new (frt: &FlashRuntime<'a>, num_elements: Option<NonNegativeInt>) -> Self {
-        let mut arg = null;
+    pub fn new (ctx: &CurrentContext<'a>, num_elements: Option<NonNegativeInt>) -> Self {
+        let mut arg = as3::null;
         let num_elements = num_elements.map(|v|{
-            arg = int::new(frt, v.get()).as_object();
+            arg = int::new(ctx, v.get()).as_object();
             std::slice::from_ref(&arg)
         });
-        let obj = Object::new(frt, Self::CLASS, num_elements).unwrap();
+        let obj = Object::new(ctx, Self::CLASS, num_elements).unwrap();
         assert!(!obj.is_null());
         unsafe {transmute(obj)}
     }
-    pub fn from_slice (frt: &FlashRuntime<'a>, elements: &[Object<'a>]) -> Self {
+    pub fn from_slice (frt: &CurrentContext<'a>, elements: &[Object<'a>]) -> Self {
         debug_assert!(elements.len() <= i32::MAX as usize);
         if elements.len() == 1 && elements[0].get_type() == Type::Number {
             let arr = Self::new(frt, NonNegativeInt::new(1));
@@ -136,7 +136,7 @@ impl Display for Vector<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::R
 pub struct ByteArray <'a> (NonNullFREObject, PhantomData<&'a()>);
 impl<'a> ByteArray<'a> {
     #[allow(unused_variables)]
-    pub fn new (frt: &FlashRuntime<'a>, length: u32) -> Self {
+    pub fn new (frt: &CurrentContext<'a>, length: u32) -> Self {
         let ptr = FREByteArray {length, bytes: std::ptr::null_mut()};
         let mut obj = std::ptr::null_mut();
         let r = unsafe {FRENewByteArray(transmute(&ptr), &mut obj)};
@@ -145,7 +145,7 @@ impl<'a> ByteArray<'a> {
         unsafe {transmute(obj)}
     }
     #[allow(unused_variables)]
-    pub fn from_bytes (frt: &FlashRuntime<'a>, bytes: impl AsRef<[u8]>) -> Self {
+    pub fn from_bytes (frt: &CurrentContext<'a>, bytes: impl AsRef<[u8]>) -> Self {
         let bytes = bytes.as_ref();
         debug_assert!(bytes.len() <= u32::MAX as usize);
         let ptr = FREByteArray {length: bytes.len() as u32, bytes: bytes.as_ptr() as FREBytes};
@@ -232,26 +232,26 @@ impl<'a> ErrorObject<'a> {
         value
     }
     const MESSAGE: UCStr = unsafe {UCStr::from_literal_unchecked(c"message")};
-    pub fn get_message(self) -> Option<StringObject<'a>> {
+    pub fn get_message(self) -> Option<as3::String<'a>> {
         let value = self.get_property(Self::MESSAGE).unwrap().try_as().ok();
         value
     }
-    pub fn set_message(self, value: Option<StringObject>) {
+    pub fn set_message(self, value: Option<as3::String>) {
         let r = self.set_property(Self::MESSAGE, Object::from(value));
         debug_assert!(r.is_ok());
     }
     const NAME: UCStr = unsafe {UCStr::from_literal_unchecked(c"name")};
-    pub fn get_name(self) -> Option<StringObject<'a>> {
+    pub fn get_name(self) -> Option<as3::String<'a>> {
         let value = self.get_property(Self::NAME).unwrap().try_as().ok();
         value
     }
-    pub fn set_name(self, value: Option<StringObject>) {
+    pub fn set_name(self, value: Option<as3::String>) {
         let r = self.set_property(Self::NAME, Object::from(value));
         debug_assert!(r.is_ok());
     }
     const CLASS: UCStr = unsafe {UCStr::from_literal_unchecked(c"Error")};
-    pub fn new (frt: &FlashRuntime<'a>, message: Option<&str>, id: i32) -> Self {
-        let message = message.map(|s|StringObject::new(frt, s));
+    pub fn new (frt: &CurrentContext<'a>, message: Option<&str>, id: i32) -> Self {
+        let message = message.map(|s|as3::String::new(frt, s));
         let id = int::new(frt, id);
         let args = vec![message.into(), id.as_object()].into_boxed_slice();
         let err_obj= Object::new(frt, Self::CLASS, Some(args.as_ref())).unwrap();

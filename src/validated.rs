@@ -3,6 +3,7 @@
 //! ensuring data passed across the FFI boundary is well-formed and valid.
 //! 
 
+
 use super::*;
 
 
@@ -151,3 +152,45 @@ impl std::borrow::Borrow<str> for UCStr {
 impl Display for UCStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Display::fmt(self.as_str(), f) }
 }
+impl Default for UCStr {
+    fn default() -> Self {unsafe {Self::from_literal_unchecked(c"")}}
+}
+
+
+pub trait ToUcstrLossy {
+    fn to_ucstr_lossy(&self) -> UCStr;
+}
+impl ToUcstrLossy for UCStr {
+    fn to_ucstr_lossy(&self) -> UCStr {self.clone()}
+}
+impl<'a, O: AsObject<'a>> ToUcstrLossy for O {
+    fn to_ucstr_lossy(&self) -> UCStr {
+        self.to_string()
+            .as_str()
+            .to_ucstr_lossy()
+    }
+}
+impl<'a, O: AsObject<'a>> ToUcstrLossy for &[O] {
+    fn to_ucstr_lossy(&self) -> UCStr {
+        self.iter()
+            .map(|o|{o.to_string()})
+            .collect::<Vec<_>>()
+            .join(", ")
+            .as_str()
+            .to_ucstr_lossy()
+    }
+}
+impl ToUcstrLossy for &str {
+    fn to_ucstr_lossy(&self) -> UCStr {
+        self.replace('\0', "�")
+            .try_into()
+            .unwrap()
+    }
+}
+impl ToUcstrLossy for String {
+    fn to_ucstr_lossy(&self) -> UCStr {
+        self.as_str()
+            .to_ucstr_lossy()
+    }
+}
+
