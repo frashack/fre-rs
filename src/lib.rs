@@ -9,33 +9,33 @@
 //! # Flash Runtime Extension Lifecycle
 //!
 //! ```text
-//!                                   Flash Runtime ━━━━┓
+//!                                   Flash-Runtime ━━━━┓
 //!                                                     ┃
 //!          ExtensionContext.loadExtension ━━━━━━━━━━━━┫
 //!                ↓                                    ┃
-//!    ┏━━━━ Extension Load ━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+//!    ┏━━━━ Extension-Load ━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
 //!    ┃           ↓                                    ┃
-//!    ┃     Initializer → Extension Data               ┃
+//!    ┃     Initializer → Extension-Data               ┃
 //!    ┃           ↓                                    ┃
 //!    ┃  ┏━━ ExtensionContext.createExtensionContext ━━┫
 //!    ┃  ┃        ↓                                    ┃
-//!    ┃  ┃    Context Initializer → Context Data       ┃
+//!    ┃  ┃    Context-Initializer → Context-Data       ┃
 //!    ┃  ┃        ↓            ↓    ↓         ↓        ┃
-//!    ┃  ┃    Function Data → Function  Extension Data ┃
+//!    ┃  ┃    Function-Data → Function  Extension-Data ┃
 //!    ┃  ┃                     ↑                       ┃
 //!    ┃  ┣━━ ExtensionContext.call ━━━━━━━━━━━━━━━━━━━━┫
 //!    ┃  ┃                                             ┃
-//!    ┃  ┃                        Extension Data       ┃
+//!    ┃  ┃                        Extension-Data       ┃
 //!    ┃  ┃                              ↑              ┃
-//!    ┃  ┃    Context Data ≈ `ContextRegistry`         ┃
+//!    ┃  ┃    Context-Data ≈ `ContextRegistry`         ┃
 //!    ┃  ┃        ↓                     ↑              ┃
-//!    ┃  ┃    Context Finalizer    Function Data       ┃
+//!    ┃  ┃    Context-Finalizer    Function-Data       ┃
 //!    ┃  ┃        ↑                                    ┃
 //!    ┃  ┗━━ ExtensionContext.dispose ━━━━━━━━━━━━━━━━━┫
 //!    ┃                                                ┃
-//!    ┃            Extension Data → Finalizer          ┃
+//!    ┃            Extension-Data → Finalizer          ┃
 //!    ┃                                 ↑              ┃
-//!    ┗━━━━━━━━━━━━━━━━━━━━━━━━━━ Extension Unload ━━━━┛
+//!    ┗━━━━━━━━━━━━━━━━━━━━━━━━━━ Extension-Unload ━━━━┛
 //! ```
 //!
 
@@ -48,7 +48,7 @@ pub mod as3 {
         object::{Object},
         primitive::{int, uint, Number, Boolean, StringObject as String}
     };
-    
+
     /// Although `'static`, it must not be used outside the Flash runtime main thread,
     /// or related APIs may return errors or panic due to failed assertions.
     #[allow(non_upper_case_globals)]

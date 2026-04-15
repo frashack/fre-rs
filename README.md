@@ -53,7 +53,7 @@ fre_rs::function! {
 
 The repository provides a [comprehensive example](https://github.com/frashack/fre-rs/tree/main/examples/windows-x86-64) of ANE integration within an AIR project.
 It covers the full development workflow, including native implementation (Rust),
-ActionScript 3.0 wrapper, and automated build script.
+ActionScript 3.0 wrapper, automated build script, and required configuration files.
 
 To build and execute the example, ensure the following environment is configured:
 
