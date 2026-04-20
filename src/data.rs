@@ -3,10 +3,10 @@
 //! and raw pointers for native data.
 //! 
 //! [`Box<dyn Any>`] is a fat pointer stored on the stack. Casting it directly
-/// to a raw pointer will truncate its metadata. To preserve type information,
-/// the fat pointer must be stored intact on the heap, so it can be safely
-/// reconstructed from a raw pointer.
-/// 
+//! to a raw pointer will truncate its metadata. To preserve type information,
+//! the fat pointer must be stored intact on the heap, so it can be safely
+//! reconstructed from a raw pointer.
+//! 
 
 
 use super::*;
