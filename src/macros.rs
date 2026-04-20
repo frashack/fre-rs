@@ -278,9 +278,8 @@ macro_rules! function {
                 argc: u32,
                 argv: *const $crate::c::markers::FREObject,
             ) -> $crate::c::markers::FREObject {
-                let func: $crate::function::Function = $func;
                 let r = ::std::panic::catch_unwind(|| -> $crate::c::markers::FREObject {
-                    $crate::context::CurrentContext::with_method(&ctx, func_data, argc, argv, func)
+                    $crate::context::CurrentContext::with_method(&ctx, func_data, argc, argv, $func)
                 });
                 let ctx: $crate::context::CurrentContext = ::std::mem::transmute(ctx);
                 $crate::function! (@Unwind [&ctx, r])

@@ -47,7 +47,7 @@ pub unsafe trait AsObject<'a>: Sized + Copy + Eq + Display + Into<FREObject> + I
         assert!(r.is_ok());
         ty.into()
     }
-
+    
     fn get_property (self, name: UCStr) -> Result<Object<'a>, ExternalError<'a>> {
         let mut object = std::ptr::null_mut();
         let mut thrown = std::ptr::null_mut();
@@ -58,6 +58,7 @@ pub unsafe trait AsObject<'a>: Sized + Copy + Eq + Display + Into<FREObject> + I
             Ok(unsafe {transmute(object)})
         }
     }
+
     fn set_property <O: AsObject<'a>> (self, name: UCStr, value: O) -> Result<(), ExternalError<'a>> {
         let mut thrown = std::ptr::null_mut();
         let r = unsafe {FRESetObjectProperty(self.as_ptr(), name.as_ptr(), value.as_ptr(), &mut thrown)};
@@ -67,6 +68,7 @@ pub unsafe trait AsObject<'a>: Sized + Copy + Eq + Display + Into<FREObject> + I
             Ok(())
         }
     }
+
     fn call_method (self, name: UCStr, args: Option<&[Object]>) -> Result<Object<'a>, ExternalError<'a>> {
         let args = args.unwrap_or_default();
         debug_assert!(args.len() <= u32::MAX as usize);
@@ -79,6 +81,7 @@ pub unsafe trait AsObject<'a>: Sized + Copy + Eq + Display + Into<FREObject> + I
             Ok(unsafe {transmute(obj)})
         }
     }
+
     /// Return [`Err`] if this is `null` or `undefined`.
     #[allow(non_snake_case)]
     fn toString (self) -> Result<as3::String<'a>, ExternalError<'a>> {

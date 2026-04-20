@@ -224,21 +224,23 @@ impl<'a> CurrentContext<'a> {
     /// Violating these assumptions may lead to undefined behavior.
     /// 
     #[allow(unsafe_op_in_unsafe_fn)]
-    pub unsafe fn with_method <F> (
+    pub unsafe fn with_method <F, R> (
         ctx: &'a FREContext,// &'function
         func_data: FREData,// &'function mut
         argc: u32,
         argv: *const FREObject,// &'function
         f: F
     ) -> FREObject
-    where F: FnOnce (&CurrentContext<'a>, Option<&mut dyn Any>, &[as3::Object<'a>]) -> as3::Object<'a>
+    where
+        F: FnOnce (&CurrentContext<'a>, Option<&mut dyn Any>, &[as3::Object<'a>]) -> R,
+        R: Into<as3::Object<'a>> + 'a
     {
         assert!(!argv.is_null() || argc==0);
         Self::with(ctx, |ctx| {
             let func_data = NonNullFREData::new(func_data)
                 .map(|raw| crate::data::mut_from(raw));
             let args = std::slice::from_raw_parts(argv as *const as3::Object, argc as usize);
-            f(ctx, func_data, args).as_ptr()
+            f(ctx, func_data, args).into().as_ptr()
         })
     }
 
@@ -271,7 +273,8 @@ impl Context for CurrentContext<'_> {
 }
 
 
-/// A handle to a context that may become invalid under specific conditions.
+/// A handle to a context created by the current extension,
+/// which may become invalid under specific conditions.
 /// 
 /// Can only be obtained through [`CurrentContext::cooperative_context_from_object`].
 ///
@@ -285,7 +288,8 @@ impl Context for CurrentContext<'_> {
 /// # Invariant
 /// 
 /// The context must have been constructed by the current extension via
-/// [`ContextInitializer`]. Violating this invariant results in undefined behavior.
+/// [`ContextInitializer`], and it must not be the [`CurrentContext`].
+/// Violating these invariants may results in undefined behavior.
 ///
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
@@ -379,7 +383,7 @@ impl Context for CooperativeContext<'_> {
 /// 
 /// Can only be obtained through [`CurrentContext::foreign_context_from_object`].
 /// 
-/// Assumes the context was not constructed by the current extension.
+/// Assumes the context was NOT constructed by the current extension.
 /// Accessing its associated native data is therefore unsafe.
 ///
 /// Invalidity only occurs after the associated `ExtensionContext` object

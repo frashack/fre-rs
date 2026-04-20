@@ -41,6 +41,8 @@
 
 
 
+/// Namespace for ActionScript 3 object types.
+/// 
 pub mod as3 {
     use super::*;
     pub use crate::types::{

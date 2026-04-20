@@ -27,7 +27,13 @@ pub type ContextInitializer = fn (ctx: &CurrentContext) -> (Option<Box<dyn Any>>
 pub type ContextFinalizer = fn (ctx: &CurrentContext);
 
 /// The function can be associated with a [`Context`] and treated as its method.
+/// 
+/// This signature is intended to match the closure accepted by [`CurrentContext::with_method`].
 ///
+/// Although the signature returns `as3::Object<'a>`, implementations may return
+/// any type implementing `Into<as3::Object<'a>> + 'a`, primarily to support
+/// types like `Option<AsObject<'a>>`.
+/// 
 pub type Function <'a> = fn (ctx: &CurrentContext<'a>, func_data: Option<&mut dyn Any>, args: &[as3::Object<'a>]) -> as3::Object<'a>;
 
 
