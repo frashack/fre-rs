@@ -22,26 +22,49 @@ impl Data for ExtensionData {}
 /// 
 pub trait Data: 'static + Sized {
     fn into_boxed (self) -> Box<dyn Any> {
-        super::data::into_boxed(self)
+        Box::new(self) as Box<dyn Any>
     }
-    fn into_raw (self) -> NonNullFREData {
-        super::data::into_raw(self.into_boxed())
-    }
+
     fn from_boxed (boxed: Box<dyn Any>) -> Result<Self, Box<dyn Any>> {
         boxed.downcast()
             .map(|b| *b)
             .map_err(|b| b)
     }
+
+    /// **In typical usage of this crate, this function should not be called directly.**
+    /// 
+    fn into_raw (self) -> NonNullFREData {
+        super::data::into_raw(self.into_boxed())
+    }
+
+    /// **In typical usage of this crate, this function should not be called directly.**
+    /// 
     #[allow(unsafe_op_in_unsafe_fn)]
     unsafe fn from_raw (raw: NonNullFREData) -> Self {
         let boxed = super::data::from_raw(raw);
         Self::from_boxed(boxed).unwrap()
     }
+
+    /// **In typical usage of this crate, this function should not be called directly.**
+    /// 
+    /// # Safety
+    /// 
+    /// The returned reference has an unbounded lifetime and is not tied to any input.
+    /// Correct and safe usage requires the caller to impose additional lifetime constraints.
+    /// 
     #[allow(unsafe_op_in_unsafe_fn)]
     unsafe fn ref_from <'a> (raw: NonNullFREData) -> Result<&'a Self, &'a dyn Any> {
         let any = super::data::ref_from(raw);
         any.downcast_ref().ok_or(any)
     }
+
+    /// **In typical usage of this crate, this function should not be called directly.**
+    /// 
+    /// # Safety
+    /// 
+    /// The returned reference has an unbounded lifetime and is not tied to any input.
+    /// Correct and safe usage requires the caller to impose additional lifetime constraints.
+    /// 
     #[allow(unsafe_op_in_unsafe_fn)]
     unsafe fn mut_from <'a> (raw: NonNullFREData) -> Result<&'a mut Self, &'a mut dyn Any> {
         let fat = super::data::mut_from(raw) as *mut dyn Any;
@@ -54,14 +77,16 @@ impl Data for () {}
 type DataPointer = *mut *mut (dyn Any + 'static);
 
 
-pub fn into_boxed <D: 'static> (data: D) -> Box<dyn Any> {
-    Box::new(data) as Box<dyn Any>
-}
+/// **In typical usage of this crate, this function should not be called directly.**
+/// 
 pub fn into_raw (boxed: Box<dyn Any>) -> NonNullFREData {
     let fat = Box::into_raw(boxed);
     let raw: DataPointer = Box::into_raw(Box::new(fat));
     unsafe {NonNull::new_unchecked(raw as FREData)}
 }
+
+/// **In typical usage of this crate, this function should not be called directly.**
+/// 
 #[allow(unsafe_op_in_unsafe_fn)]
 pub unsafe fn from_raw (raw: NonNullFREData) -> Box<dyn Any> {
     let raw = raw.as_ptr() as DataPointer;
@@ -69,18 +94,37 @@ pub unsafe fn from_raw (raw: NonNullFREData) -> Box<dyn Any> {
     let boxed = Box::from_raw(*fat);
     boxed
 }
+
+/// **In typical usage of this crate, this function should not be called directly.**
+/// 
+/// # Safety
+/// 
+/// The returned reference has an unbounded lifetime and is not tied to any input.
+/// Correct and safe usage requires the caller to impose additional lifetime constraints.
+/// 
 #[allow(unsafe_op_in_unsafe_fn)]
 pub unsafe fn ref_from <'a> (raw: NonNullFREData) -> &'a dyn Any {
     let raw = raw.as_ptr() as DataPointer;
     let any = &(**raw);
     any
 }
+
+/// **In typical usage of this crate, this function should not be called directly.**
+/// 
+/// # Safety
+/// 
+/// The returned reference has an unbounded lifetime and is not tied to any input.
+/// Correct and safe usage requires the caller to impose additional lifetime constraints.
+/// 
 #[allow(unsafe_op_in_unsafe_fn)]
 pub unsafe fn mut_from <'a> (raw: NonNullFREData) -> &'a mut dyn Any {
     let raw = raw.as_ptr() as DataPointer;
     let any = &mut (**raw);
     any
 }
+
+/// **In typical usage of this crate, this function should not be called directly.**
+/// 
 #[allow(unsafe_op_in_unsafe_fn)]
 pub unsafe fn drop_from (raw: NonNullFREData) {
     drop(from_raw(raw));

@@ -53,10 +53,13 @@ pub mod as3 {
 
     /// Although `'static`, it must not be used outside the Flash runtime main thread,
     /// or related APIs may return errors or panic due to failed assertions.
+    /// 
     #[allow(non_upper_case_globals)]
     pub const null: Object = unsafe {transmute(std::ptr::null_mut::<FREObject>())};
 }
+
 /// [`fre-sys`](https://crates.io/crates/fre-sys)
+/// 
 pub mod c {pub use fre_sys::*;}
 pub mod prelude {
     pub use crate::{
@@ -70,6 +73,19 @@ pub mod prelude {
     };
     pub use std::any::Any;
 }
+
+/// Internal implementation details of the crate. Not intended for public use.
+/// 
+#[doc(hidden)]
+pub mod __private {
+    thread_local! {
+        /// Thread-local storage for caching panic information,
+        /// which will be propagated to the Flash Runtime.
+        pub static LAST_PANIC_INFO: std::cell::RefCell<Option<String>> = std::cell::RefCell::new(None);
+    }
+    pub(crate) trait Sealed {}
+}
+
 pub mod context;
 pub mod data;
 pub mod error;
@@ -80,7 +96,7 @@ pub mod misc;
 pub mod types;
 pub mod validated;
 pub mod utils;
-pub mod _internal;
+
 
 use {
     prelude::*,
@@ -89,7 +105,7 @@ use {
     error::*,
     function::*,
     utils::*,
-    _internal::Sealed,
+    __private::Sealed,
 };
 use std::{
     cell::{RefCell},

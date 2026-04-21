@@ -13,6 +13,7 @@ use super::*;
 /// In asynchronous scenarios, its validity is difficult to predict.
 /// Therefore, all APIs on this type are safe to call, but their execution
 /// results cannot be guaranteed or reliably observed.
+/// 
 #[derive(Debug, Clone, Copy)]
 pub struct EventDispatcher (pub(crate) crate::context::ContextHandle);
 impl EventDispatcher {
@@ -38,6 +39,8 @@ impl EventDispatcher {
 unsafe impl Send for EventDispatcher {}
 
 
+/// `flash.events.StatusEvent`
+/// 
 #[derive(Debug, Clone)]
 pub struct Event {
     pub code: UCStr,

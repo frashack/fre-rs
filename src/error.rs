@@ -14,9 +14,9 @@ impl<'a> ExternalError<'a> {
     ///
     /// If `thrown` is [`None`], the thrown object is ignored or assumed unavailable.
     ///
-    /// # Notes
     /// When an ActionScript throw occurs, the provided object is assumed to be a valid [`FREObject`].
-    /// However, ActionScript may throw [`null`].
+    /// However, ActionScript may throw `null`.
+    /// 
     pub fn try_from (result: FREResult, thrown: Option<as3::Object<'a>>) -> Result<Self, ()> {
         let r = result.try_into();
         if let (Ok(Self::ActionScript(_)), Some(obj)) = (r, thrown) {
@@ -50,6 +50,7 @@ impl Display for ExternalError<'_> {
     }
 }
 
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FfiError {
     NoSuchName,
@@ -81,10 +82,12 @@ impl Display for FfiError {
 impl Error for FfiError {}
 impl TryFrom<FREResult> for FfiError {
     type Error = ();
+
     /// Converts a [`FREResult`] into [`FfiError`].
     ///
     /// Assumes `value` is **not** [`FREResult::FRE_ACTIONSCRIPT_ERROR`].
     /// If it is, it will be treated as an unexpected result.
+    /// 
     fn try_from(value: FREResult) -> Result<Self, ()> {
         Ok(match value {
             FREResult::FRE_OK => return Err(()),
@@ -100,12 +103,14 @@ impl TryFrom<FREResult> for FfiError {
     }
 }
 
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct ActionScriptError<'a> (as3::Object<'a>);
 impl<'a> ActionScriptError<'a> {
     const IGNORED: ActionScriptError<'static> = ActionScriptError(as3::null);
-    /// May be null if the caller does not want to receive this handle.
+
+    /// May be `null` if the caller does not want to receive this handle.
     pub fn thrown (self) -> as3::Object<'a> {self.0}
 }
 impl Display for ActionScriptError<'_> {

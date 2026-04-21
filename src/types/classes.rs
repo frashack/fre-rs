@@ -131,6 +131,9 @@ impl<'a> TryFrom<Object<'a>> for Vector<'a> {type Error = Type; fn try_from (val
 impl Display for Vector<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {Display::fmt(&self.as_object(), f)}}
 
 
+///
+/// TODO: Implement properties and methods of `flash.utils.ByteArray`.
+///
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct ByteArray <'a> (NonNullFREObject, PhantomData<&'a()>);
@@ -155,6 +158,9 @@ impl<'a> ByteArray<'a> {
         debug_assert!(!obj.is_null());
         unsafe {transmute(obj)}
     }
+
+    /// Using [`as3::null`] inside the closure is meaningless and may lead to unintended FFI call ordering.
+    /// 
     pub fn with <F, R> (self, f: F) -> R
     where F: FnOnce (&mut [u8]) -> R + Sync
     {
@@ -176,11 +182,15 @@ impl<'a> TryFrom<Object<'a>> for ByteArray<'a> {type Error = Type; fn try_from (
 impl Display for ByteArray<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {Display::fmt(&self.as_object(), f)}}
 
 
+///
+/// TODO: Implement properties and methods of `flash.display.BitmapData`.
+///
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct BitmapData <'a> (NonNullFREObject, PhantomData<&'a()>);
 impl<'a> BitmapData<'a> {
-    /// Using [`null`] inside the closure is meaningless and may lead to unintended FFI call ordering.
+    /// Using [`as3::null`] inside the closure is meaningless and may lead to unintended FFI call ordering.
+    /// 
     pub fn with <F, R> (self, f: F) -> R
     where F: FnOnce (BitmapDataAdapter) -> R + Sync
     {
@@ -201,6 +211,9 @@ impl<'a> TryFrom<Object<'a>> for BitmapData<'a> {type Error = Type; fn try_from 
 impl Display for BitmapData<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {Display::fmt(&self.as_object(), f)}}
 
 
+///
+/// TODO: Implement properties and methods of `flash.display3D.Context3D`.
+///
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Context3D <'a> (NonNullFREObject, PhantomData<&'a()>);

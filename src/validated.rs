@@ -32,6 +32,7 @@ impl Default for NonNegativeInt {
 
 
 /// A UTF-8 string stored as a NUL-terminated [`CStr`].
+/// 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UCStr(UCStrValue);
 #[derive(Debug, Clone, PartialEq, Eq)]

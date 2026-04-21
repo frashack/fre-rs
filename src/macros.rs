@@ -172,7 +172,7 @@ macro_rules! extension {
                     .unwrap_or_default();
                 let backtrace = ::std::backtrace::Backtrace::force_capture();
                 let s = format!("{payload}\n{location}\n{backtrace}");
-                $crate::_internal::LAST_PANIC_INFO.with(|i| {*i.borrow_mut() = Some(s);});
+                $crate::__private::LAST_PANIC_INFO.with(|i| {*i.borrow_mut() = Some(s);});
                 default_hook(info);
             }));
         });
@@ -373,7 +373,7 @@ macro_rules! function {
         match $catched {
             Ok(r) => r.into(),
             Err(_) => {
-                let info = $crate::_internal::LAST_PANIC_INFO.with(|i| {i.borrow_mut().take()});
+                let info = $crate::__private::LAST_PANIC_INFO.with(|i| {i.borrow_mut().take()});
                 let msg = info.as_ref()
                     .map(|s|s.as_str())
                     .unwrap_or("Panic occurred but no details were captured.");

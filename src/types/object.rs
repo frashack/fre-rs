@@ -97,6 +97,17 @@ pub unsafe trait AsObject<'a>: Sized + Copy + Eq + Display + Into<FREObject> + I
 /// 
 /// Primarily used for object type casting, and should be implemented when defining a new type.
 /// 
+/// # Safety
+///
+/// Implementing this trait requires strict guarantees about memory layout.
+/// The implementing type must be layout-compatible with [`FREObject`].
+/// In practice, this means it must be annotated with `#[repr(transparent)]`
+/// and wrap the underlying [`FREObject`] without altering its representation.
+///
+/// This requirement exists because the methods provided by this trait may
+/// perform reinterpretation of the underlying memory. Failure to uphold
+/// these guarantees will result in undefined behavior.
+/// 
 pub unsafe trait TryAs<'a, T>: AsObject<'a> + TryInto<T>
 where T: AsObject<'a> {
     fn try_as (self) -> Result<T, Type> {
@@ -162,6 +173,8 @@ impl<'a> Object<'a> {
         Ok(r)
     }
 
+    /// [`FRENativeWindow`] is only valid for the duration of this closure call.
+    /// 
     /// Using [`as3::null`] inside the closure is meaningless and may lead to unintended FFI call ordering.
     /// 
     /// This is a minimal safety wrapper around the underlying FFI. Its current

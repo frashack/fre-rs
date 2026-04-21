@@ -615,9 +615,9 @@ impl ContextRegistry {
     
     fn new (ext_data: FREData, ctx_type: Option<UCStr>) -> RefCell<Self> {
         let ext_data = NonNullFREData::new(ext_data)
-            .map(|ptr| {
+            .map(|raw| {
                 Arc::clone(unsafe {
-                    <ExtensionData as Data>::ref_from(ptr)
+                    <ExtensionData as Data>::ref_from(raw)
                 }.unwrap())
             });
         RefCell::new(Self {
