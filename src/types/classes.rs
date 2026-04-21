@@ -42,14 +42,14 @@ impl<'a> Array<'a> {
         assert!(!obj.is_null());
         unsafe {transmute(obj)}
     }
-    pub fn from_slice (frt: &CurrentContext<'a>, elements: &[Object<'a>]) -> Self {
+    pub fn from_slice (ctx: &CurrentContext<'a>, elements: &[Object<'a>]) -> Self {
         debug_assert!(elements.len() <= i32::MAX as usize);
         if elements.len() == 1 && elements[0].get_type() == Type::Number {
-            let arr = Self::new(frt, NonNegativeInt::new(1));
+            let arr = Self::new(ctx, NonNegativeInt::new(1));
             arr.set(0, *unsafe {elements.get_unchecked(0)});
             arr
         } else {
-            let obj = Object::new(frt, Self::CLASS, Some(elements)).unwrap();
+            let obj = Object::new(ctx, Self::CLASS, Some(elements)).unwrap();
             debug_assert!(!obj.is_null());
             unsafe {transmute(obj)}
         }
@@ -136,7 +136,7 @@ impl Display for Vector<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::R
 pub struct ByteArray <'a> (NonNullFREObject, PhantomData<&'a()>);
 impl<'a> ByteArray<'a> {
     #[allow(unused_variables)]
-    pub fn new (frt: &CurrentContext<'a>, length: u32) -> Self {
+    pub fn new (ctx: &CurrentContext<'a>, length: u32) -> Self {
         let ptr = FREByteArray {length, bytes: std::ptr::null_mut()};
         let mut obj = std::ptr::null_mut();
         let r = unsafe {FRENewByteArray(transmute(&ptr), &mut obj)};
@@ -145,7 +145,7 @@ impl<'a> ByteArray<'a> {
         unsafe {transmute(obj)}
     }
     #[allow(unused_variables)]
-    pub fn from_bytes (frt: &CurrentContext<'a>, bytes: impl AsRef<[u8]>) -> Self {
+    pub fn from_bytes (ctx: &CurrentContext<'a>, bytes: impl AsRef<[u8]>) -> Self {
         let bytes = bytes.as_ref();
         debug_assert!(bytes.len() <= u32::MAX as usize);
         let ptr = FREByteArray {length: bytes.len() as u32, bytes: bytes.as_ptr() as FREBytes};
@@ -250,11 +250,11 @@ impl<'a> ErrorObject<'a> {
         debug_assert!(r.is_ok());
     }
     const CLASS: UCStr = unsafe {UCStr::from_literal_unchecked(c"Error")};
-    pub fn new (frt: &CurrentContext<'a>, message: Option<&str>, id: i32) -> Self {
-        let message = message.map(|s|as3::String::new(frt, s));
-        let id = int::new(frt, id);
+    pub fn new (ctx: &CurrentContext<'a>, message: Option<&str>, id: i32) -> Self {
+        let message = message.map(|s|as3::String::new(ctx, s));
+        let id = int::new(ctx, id);
         let args = vec![message.into(), id.as_object()].into_boxed_slice();
-        let err_obj= Object::new(frt, Self::CLASS, Some(args.as_ref())).unwrap();
+        let err_obj= Object::new(ctx, Self::CLASS, Some(args.as_ref())).unwrap();
         assert!(!err_obj.is_null());
         unsafe {transmute(err_obj)}
     }

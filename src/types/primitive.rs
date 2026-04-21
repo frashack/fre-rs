@@ -7,7 +7,7 @@ use super::*;
 pub struct int <'a> (NonNullFREObject, PhantomData<&'a()>);
 impl<'a> int<'a> {
     #[allow(unused_variables)]
-    pub fn new (frt: &CurrentContext<'a>, value: i32) -> Self {
+    pub fn new (ctx: &CurrentContext<'a>, value: i32) -> Self {
         let mut obj = std::ptr::null_mut();
         let r = unsafe {FRENewObjectFromInt32(value, &mut obj)};
         debug_assert!(r.is_ok());
@@ -33,7 +33,7 @@ impl Display for int<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Resu
 pub struct uint <'a> (NonNullFREObject, PhantomData<&'a()>);
 impl<'a> uint<'a> {
     #[allow(unused_variables)]
-    pub fn new (frt: &CurrentContext<'a>, value: u32) -> Self {
+    pub fn new (ctx: &CurrentContext<'a>, value: u32) -> Self {
         let mut obj = std::ptr::null_mut();
         let r = unsafe {FRENewObjectFromUint32(value, &mut obj)};
         debug_assert!(r.is_ok());
@@ -58,7 +58,7 @@ impl Display for uint<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Res
 pub struct Number <'a> (NonNullFREObject, PhantomData<&'a()>);
 impl<'a> Number<'a> {
     #[allow(unused_variables)]
-    pub fn new (frt: &CurrentContext<'a>, value: f64) -> Self {
+    pub fn new (ctx: &CurrentContext<'a>, value: f64) -> Self {
         let mut obj = std::ptr::null_mut();
         let r = unsafe {FRENewObjectFromDouble(value, &mut obj)};
         debug_assert!(r.is_ok());
@@ -85,7 +85,7 @@ impl Display for Number<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::R
 pub struct Boolean <'a> (NonNullFREObject, PhantomData<&'a()>);
 impl<'a> Boolean<'a> {
     #[allow(unused_variables)]
-    pub fn new (frt: &CurrentContext<'a>, value: bool) -> Self {
+    pub fn new (ctx: &CurrentContext<'a>, value: bool) -> Self {
         let value = if value {1} else {0};
         let mut obj = std::ptr::null_mut();
         let r = unsafe {FRENewObjectFromBool(value, &mut obj)};
@@ -114,7 +114,7 @@ impl Display for Boolean<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::
 pub struct StringObject <'a> (NonNullFREObject, PhantomData<&'a()>);
 impl<'a> StringObject<'a> {
     #[allow(unused_variables)]
-    pub fn new (frt: &CurrentContext<'a>, value: &str) -> Self {
+    pub fn new (ctx: &CurrentContext<'a>, value: &str) -> Self {
         let value = value.as_bytes();
         debug_assert!(value.len() <= u32::MAX as usize);
         let mut obj = std::ptr::null_mut();
