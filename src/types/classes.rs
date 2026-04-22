@@ -1,5 +1,3 @@
-use std::i32;
-
 use super::*;
 
 
@@ -155,7 +153,7 @@ impl<'a> ByteArray<'a> {
         let mut obj = std::ptr::null_mut();
         let r = unsafe {FRENewByteArray(transmute(&ptr), &mut obj)};
         debug_assert!(r.is_ok());
-        debug_assert!(!obj.is_null());
+        assert!(!obj.is_null());
         unsafe {transmute(obj)}
     }
 
@@ -164,10 +162,11 @@ impl<'a> ByteArray<'a> {
     pub fn with <F, R> (self, f: F) -> R
     where F: FnOnce (&mut [u8]) -> R + Sync
     {
-        let mut fptr = FREByteArray {length: 0, bytes: std::ptr::null_mut()};
-        let result = unsafe {FREAcquireByteArray(self.as_ptr(), &mut fptr)};
-        debug_assert!(result.is_ok());
-        let bytes = unsafe {std::slice::from_raw_parts_mut(fptr.bytes, fptr.length as usize)};
+        let mut fat = FREByteArray {length: 0, bytes: std::ptr::null_mut()};
+        let result = unsafe {FREAcquireByteArray(self.as_ptr(), &mut fat)};
+        assert!(result.is_ok());
+        assert!(!fat.bytes.is_null());
+        let bytes = unsafe {std::slice::from_raw_parts_mut(fat.bytes, fat.length as usize)};
         let r = f(bytes);
         let result = unsafe {FREReleaseByteArray(self.as_ptr())};
         debug_assert!(result.is_ok());

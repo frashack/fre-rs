@@ -52,7 +52,7 @@ pub unsafe trait AsObject<'a>: Sized + Copy + Eq + Display + Into<FREObject> + I
         let mut object = std::ptr::null_mut();
         let mut thrown = std::ptr::null_mut();
         let r = unsafe {FREGetObjectProperty(self.as_ptr(), name.as_ptr(), &mut object, &mut thrown)};
-        if let Ok(e) = ExternalError::try_from(r, Some(unsafe {transmute(thrown)})) {
+        if let Some(e) = ExternalError::try_from(r, Some(unsafe {transmute(thrown)})) {
             Err(e)
         }else{
             Ok(unsafe {transmute(object)})
@@ -62,7 +62,7 @@ pub unsafe trait AsObject<'a>: Sized + Copy + Eq + Display + Into<FREObject> + I
     fn set_property <O: AsObject<'a>> (self, name: UCStr, value: O) -> Result<(), ExternalError<'a>> {
         let mut thrown = std::ptr::null_mut();
         let r = unsafe {FRESetObjectProperty(self.as_ptr(), name.as_ptr(), value.as_ptr(), &mut thrown)};
-        if let Ok(e) = ExternalError::try_from(r, Some(unsafe {transmute(thrown)})) {
+        if let Some(e) = ExternalError::try_from(r, Some(unsafe {transmute(thrown)})) {
             Err(e)
         }else{
             Ok(())
@@ -75,7 +75,7 @@ pub unsafe trait AsObject<'a>: Sized + Copy + Eq + Display + Into<FREObject> + I
         let mut obj = std::ptr::null_mut();
         let mut thrown = std::ptr::null_mut();
         let r = unsafe {FRECallObjectMethod(self.as_ptr(), name.as_ptr(), args.len() as u32, transmute(args.as_ptr()), &mut obj, &mut thrown)};
-        if let Ok(e) = ExternalError::try_from(r, Some(unsafe {transmute(thrown)})) {
+        if let Some(e) = ExternalError::try_from(r, Some(unsafe {transmute(thrown)})) {
             Err(e)
         }else{
             Ok(unsafe {transmute(obj)})
@@ -144,7 +144,7 @@ impl<'a> Object<'a> {
         let mut object = std::ptr::null_mut();
         let mut thrown = std::ptr::null_mut();
         let r = unsafe {FRENewObject(class.as_ptr(), args.len() as u32, transmute(args.as_ptr()), &mut object, &mut thrown)};
-        if let Ok(e) = ExternalError::try_from(r, Some(unsafe {transmute(thrown)})) {
+        if let Some(e) = ExternalError::try_from(r, Some(unsafe {transmute(thrown)})) {
             Err(e)
         }else{
             assert!(!object.is_null());
@@ -265,17 +265,11 @@ impl Display for Object<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_null() {return write!(f, "null");}
         match self.toString() {
-            Ok(s) => {Display::fmt(s.value(), f)},
-            Err(e) => {
-                match e {
-                    ExternalError::C(e) => Display::fmt(&e, f),
-                    ExternalError::ActionScript(e) => {
-                        if let Ok(s) = e.thrown().toString().map(|s|{s.value()}) {
-                            write!(f, "{e} {s}")
-                        } else {Display::fmt(&e, f)}
-                    },
-                }
-            },
+            Ok(s) => Display::fmt(s.value(), f),
+
+            // May mutually call with `<ExternalError as Display>::fmt`.
+            // Assumes thrown object's `toString` does not re-enter and cause an infinite call loop.
+            Err(ref e) => Display::fmt(e, f),
         }
     }
 }

@@ -11,7 +11,7 @@ pub(crate) type ContextHandle = NonNull<c_void>;
 
 /// The current ANE context, on which most APIs in this crate depend.
 ///
-/// The lifetime is strictly tied to the current context method call stack.
+/// The lifetime is strictly tied to the function call stack.
 ///
 /// # Invariant
 /// 

@@ -18,24 +18,39 @@ use super::*;
 ///         move initializer, final finalizer;
 ///         gen context_initializer, final context_finalizer;
 ///     }
-///     struct ExtensionData (i32);
-///     impl Data for ExtensionData {}
-///     fn initializer() -> Option<Box<dyn Any>> {Some(ExtensionData(0).into_boxed())}
-///     fn finalizer(ext_data: Option<Box<dyn Any>>) {ExtensionData::from_boxed(ext_data.unwrap()).unwrap().0 = -1;}
-///     fn context_initializer(ctx: &CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet) {
-///         let mut funcs = FunctionSet::with_capacity(1);
-///         if ctx.ty().is_some() {
-///             funcs.add(None, None, method_name);
-///         } else {
-///             funcs.add(None, None, method_name2);
-///         }
-///         return (None, funcs);
+///     struct NativeData (i32);
+///     impl Data for NativeData {}
+///     fn initializer() -> Option<Box<dyn Any>> {
+///         let extension_data = NativeData(-3).into_boxed();
+///         return Some(extension_data);
 ///     }
-///     fn context_finalizer(ctx: &CurrentContext) {ctx.set_actionscript_data(as3::null)}
+///     fn finalizer(ext_data: Option<Box<dyn Any>>) {
+///         assert_eq!(NativeData::from_boxed(ext_data.unwrap()).unwrap().0, -3);
+///     }
+///     fn context_initializer(ctx: &CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet) {
+///         let context_data = NativeData(-2).into_boxed();
+///         let mut funcs = FunctionSet::with_capacity(1);
+///         let function_data = NativeData(-1).into_boxed();
+///         if ctx.ty().is_some() {
+///             funcs.add(None, Some(function_data), method_name);
+///         } else {
+///             funcs.add(None, Some(function_data), method_name2);
+///         }
+///         return (Some(context_data), funcs);
+///     }
+///     fn context_finalizer(ctx: &CurrentContext) {
+///         let context_data: &NativeData = ctx.data().unwrap().downcast_ref().unwrap();
+///         assert_eq!(context_data.0, -2);
+///         ctx.set_actionscript_data(as3::null)
+///     }
 ///     fn method_implementation <'a> (ctx: &CurrentContext<'a>, data: Option<&mut dyn Any>, args: &[as3::Object<'a>]) -> as3::Object<'a> {as3::null}
 ///     fre_rs::function! (method_name use method_implementation);
 ///     fre_rs::function! {
-///         method_name2 (_, _, _) -> Option<as3::Array> {None}
+///         method_name2 (ctx, data, args) -> Option<as3::Array> {
+///             let function_data: &mut NativeData = data.unwrap().downcast_mut().unwrap();
+///             assert_eq!(function_data.0, -1);
+///             return None;
+///         }
 ///     }
 /// }
 /// ```
@@ -123,7 +138,6 @@ macro_rules! extension {
             }
             *ctx_initializer_to_set = ctx_initializer;
             *ctx_finalizer_to_set = Some(ctx_finalizer);
-            $crate::extension! (@Hook);
         }
         #[allow(unsafe_op_in_unsafe_fn, non_snake_case)]
         #[unsafe(no_mangle)]
@@ -132,7 +146,7 @@ macro_rules! extension {
                 .map(|raw| {
                     let arc_mutex_boxed = <::std::sync::Arc<::std::sync::Mutex<Box<dyn ::std::any::Any>>> as $crate::data::Data>::from_raw(raw);
                     let mutex = ::std::sync::Arc::try_unwrap(arc_mutex_boxed).expect("INVARIANT: No context exists.");
-                    let boxed = mutex.into_inner().expect("Mutex poisoned.");
+                    let boxed = mutex.into_inner().expect("The mutex is poisoned.");
                     boxed
                 });
             $(
@@ -156,27 +170,8 @@ macro_rules! extension {
             assert!(!ctx_finalizer_to_set.is_null());
             *ctx_initializer_to_set = ctx_initializer;
             *ctx_finalizer_to_set = Some(ctx_finalizer);
-            $crate::extension! (@Hook);
         }
     };
-    (// #3
-        @Hook
-    ) => {
-        static INIT_HOOK: ::std::sync::Once = ::std::sync::Once::new();
-        INIT_HOOK.call_once(|| {
-            let default_hook = ::std::panic::take_hook();
-            ::std::panic::set_hook(Box::new(move |info| {
-                let payload = info.payload_as_str().unwrap_or_default();
-                let location = info.location()
-                    .map(|l| format!("at {}:{}:{}", l.file(), l.line(), l.column()))
-                    .unwrap_or_default();
-                let backtrace = ::std::backtrace::Backtrace::force_capture();
-                let s = format!("{payload}\n{location}\n{backtrace}");
-                $crate::__private::LAST_PANIC_INFO.with(|i| {*i.borrow_mut() = Some(s);});
-                default_hook(info);
-            }));
-        });
-    }
 }
 
 
@@ -194,23 +189,17 @@ macro_rules! extension {
 /// IDE support. However, it introduces two distinct items with the same
 /// semantics, so naming should be chosen carefully to avoid confusion.
 /// 
-/// # Panic Handling
+/// # Panics and Debugging
 /// 
-/// Any [`panic`] occurring within the function body is intercepted via
-/// [`std::panic::catch_unwind`]. Instead of unwinding across the FFI boundary,
-/// an [`as3::Error`] containing the captured panic details is constructed and
-/// returned to the Flash Runtime.
+/// If a panic occurs on the call stack, the process will abort.
+/// The runtime may print a backtrace to `stderr`, but it may lack sufficient
+/// symbol information (such as function names and source locations)
+/// for meaningful debugging.
 ///
-/// This fallback return value is **NOT** constrained by the return type
-/// declared in the macro invocation. On the ActionScript side, the result may
-/// either be expected and handled as an `Error`, or not. In the latter case,
-/// if an [`as3::Error`] is returned, casting it to a non-error type yields
-/// `null` and may lead to runtime exceptions.
-///
-/// When the [`as3::Error`] is properly handled, the Flash Runtime remains
-/// stable. However, care must be taken to avoid leaving the native extension
-/// in an inconsistent state; resources should be managed reliably even in the
-/// presence of panics.
+/// For example, when using the MSVC toolchain on Windows, including
+/// the generated `.pdb` file alongside the `.dll` (in the `.ane` package)
+/// allows debuggers and crash reporting tools to resolve symbols
+/// and produce human-readable stack traces.
 /// 
 /// ## Full Example
 /// ```
@@ -255,10 +244,9 @@ macro_rules! function {
                     args: &[$crate::as3::Object<'a>],
                 ) -> $crate::as3::Object<'a> {
                     $crate::function! {@Parameters [ctx, func_data, args] $($arguments)+}
-                    let r = ::std::panic::catch_unwind(|| -> $crate::function!(@Return $($return_type)?) {
+                    (|| -> $crate::function!(@Return $($return_type)?) {
                         $body
-                    });
-                    $crate::function! (@Unwind [ctx, r])
+                    })().into()
                 }
                 $crate::context::CurrentContext::with_method(&ctx, func_data, argc, argv, func)
             }
@@ -278,11 +266,7 @@ macro_rules! function {
                 argc: u32,
                 argv: *const $crate::c::markers::FREObject,
             ) -> $crate::c::markers::FREObject {
-                let r = ::std::panic::catch_unwind(|| -> $crate::c::markers::FREObject {
-                    $crate::context::CurrentContext::with_method(&ctx, func_data, argc, argv, $func)
-                });
-                let ctx: $crate::context::CurrentContext = ::std::mem::transmute(ctx);
-                $crate::function! (@Unwind [&ctx, r])
+                $crate::context::CurrentContext::with_method(&ctx, func_data, argc, argv, $func)
             }
             abi},
         );
@@ -367,21 +351,5 @@ macro_rules! function {
             _ctx, _data, _args
         }
     };
-    (// #13
-        @Unwind [$ctx:expr_2021, $catched:expr_2021]
-    ) => {
-        match $catched {
-            Ok(r) => r.into(),
-            Err(_) => {
-                let info = $crate::__private::LAST_PANIC_INFO.with(|i| {i.borrow_mut().take()});
-                let msg = info.as_ref()
-                    .map(|s|s.as_str())
-                    .unwrap_or("Panic occurred but no details were captured.");
-                let err = $crate::as3::Error::new($ctx, Some(msg), i32::MIN);
-                err.set_name(Some($crate::as3::String::new($ctx, "Native Extension Panic Error")));
-                err.into()
-            },
-        }
-    }
 }
 

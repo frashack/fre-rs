@@ -17,11 +17,21 @@ use super::*;
 #[derive(Debug, Clone, Copy)]
 pub struct EventDispatcher (pub(crate) crate::context::ContextHandle);
 impl EventDispatcher {
-    pub fn dispatch (&self, event: Event) {
+
+    /// Attempts to dispatch a event to the associated `ExtensionContext`.
+    ///
+    /// If the underlying context has already been disposed, this call has no effect.
+    /// 
+    pub fn dispatch (self, event: Event) {
         let r = unsafe {FREDispatchStatusEventAsync(self.0.as_ptr(), event.code.as_ptr(), event.level.as_ptr())};
         debug_assert!(r.is_ok());
     }
-    pub fn debug (&self, message: impl AsRef<str>) {
+
+    /// Sends a debug message as a event through the associated `ExtensionContext`.
+    /// 
+    /// If the underlying context has already been disposed, this call has no effect.
+    /// 
+    pub fn debug (self, message: impl AsRef<str>) {
         let s = message.as_ref();
         let code = match UCStr::try_from(s) {
             Ok(s) => s,

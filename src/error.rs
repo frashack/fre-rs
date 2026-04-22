@@ -4,48 +4,55 @@ use super::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExternalError<'a> {
     C(FfiError),
-    ActionScript(ActionScriptError<'a>),
+
+    /// May be [`None`] if the thrown object is ignored or unavailable.
+    ActionScript(Option<as3::Object<'a>>),
 }
 impl<'a> ExternalError<'a> {
     /// Attempts to convert a [`FREResult`] into [`ExternalError`].
     ///
     /// If the result represents an ActionScript error and `thrown` is [`Some`],
-    /// the provided object is used as the error value.
+    /// the provided object is used as the error object.
     ///
-    /// If `thrown` is [`None`], the thrown object is ignored or assumed unavailable.
+    /// If `thrown` is [`None`], the thrown object is ignored or unavailable.
     ///
-    /// When an ActionScript throw occurs, the provided object is assumed to be a valid [`FREObject`].
-    /// However, ActionScript may throw `null`.
+    /// When an ActionScript throw occurs, the provided object is assumed to be a valid [`as3::Object`].
+    /// However, ActionScript may throw [`as3::null`].
     /// 
-    pub fn try_from (result: FREResult, thrown: Option<as3::Object<'a>>) -> Result<Self, ()> {
-        let r = result.try_into();
-        if let (Ok(Self::ActionScript(_)), Some(obj)) = (r, thrown) {
-            return Ok(ActionScriptError(obj).into());
+    pub fn try_from (result: FREResult, thrown: Option<as3::Object<'a>>) -> Option<Self> {
+        let r = <Self as TryFrom<FREResult>>::try_from(result);
+        if let Ok(Self::ActionScript(_)) = r {
+            Some(Self::ActionScript(thrown))
+        }else{
+            r.ok()
         }
-        r
     }
 }
-impl From<FfiError> for ExternalError<'static> {
+impl From<FfiError> for ExternalError<'_> {
     fn from(value: FfiError) -> Self {Self::C(value)}
 }
-impl<'a> From<ActionScriptError<'a>> for ExternalError<'a> {
-    fn from(value: ActionScriptError<'a>) -> Self {Self::ActionScript(value)}
-}
-impl TryFrom<FREResult> for ExternalError<'static> {
+impl TryFrom<FREResult> for ExternalError<'_> {
     type Error = ();
     fn try_from(value: FREResult) -> Result<Self, ()> {
         FfiError::try_from(value).map(|e|{
             if let FfiError::UnexpectedResult(v)=e && v==FREResult::FRE_ACTIONSCRIPT_ERROR {
-                ActionScriptError::IGNORED.into()
+                Self::ActionScript(None)
             }else{e.into()}
         })
     }
 }
 impl Display for ExternalError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::C(e) => Display::fmt(e, f),
-            Self::ActionScript(e) => Display::fmt(e, f),
+        match *self {
+            Self::C(ref err) => Display::fmt(err, f),
+            Self::ActionScript(thrown) => {
+                const PREFIX: &str = "[ExternalError]";
+                if let Some(thrown) = thrown {
+                    write!(f, "{PREFIX} An ActionScript error occurred, and an object was thrown: {thrown}")
+                } else {
+                    write!(f, "{PREFIX} An ActionScript error occurred, but the thrown object was ignored or unavailable.")
+                }
+            },
         }
     }
 }
@@ -105,23 +112,6 @@ impl TryFrom<FREResult> for FfiError {
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct ActionScriptError<'a> (as3::Object<'a>);
-impl<'a> ActionScriptError<'a> {
-    const IGNORED: ActionScriptError<'static> = ActionScriptError(as3::null);
-
-    /// May be `null` if the caller does not want to receive this handle.
-    pub fn thrown (self) -> as3::Object<'a> {self.0}
-}
-impl Display for ActionScriptError<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[ActionScriptError] An ActionScript error occurred, and an exception was thrown. The C API functions that can result in this error allow you to specify an FREObject to receive information about the exception.")
-    }
-}
-impl Error for ActionScriptError<'_> {}
-
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ContextError {
     InvalidContext,
     NullRegistry,
@@ -140,3 +130,4 @@ impl Error for ContextError {}
 impl From<FfiError> for ContextError {
     fn from(value: FfiError) -> Self {Self::FfiCallFailed(value)}
 }
+

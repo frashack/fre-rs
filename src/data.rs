@@ -71,7 +71,6 @@ pub trait Data: 'static + Sized {
         (&mut (*fat)).downcast_mut().ok_or(&mut (*fat))
     }
 }
-impl Data for () {}
 
 
 type DataPointer = *mut *mut (dyn Any + 'static);
