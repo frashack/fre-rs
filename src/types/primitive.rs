@@ -1,140 +1,172 @@
 use super::*;
+use std::string::String as StdString;
 
 
-#[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct int <'a> (NonNullFREObject, PhantomData<&'a()>);
+crate::class! {
+    /// A reference to the AS3 object `int`.
+    /// 
+    /// Some methods are not yet implemented.
+    /// 
+    #[allow(non_camel_case_types)]
+    int !PartialEq
+}
+impl PartialEq for int<'_> {fn eq(&self, other: &Self) -> bool {self.value() == other.value()}}
+impl PartialEq<i32> for int<'_> {fn eq(&self, other: &i32) -> bool {self.value() == *other}}
+impl PartialEq<int<'_>> for i32 {fn eq(&self, other: &int<'_>) -> bool {*self == other.value()}}
+impl Eq for int<'_> {}
 impl<'a> int<'a> {
-    #[allow(unused_variables)]
-    pub fn new (ctx: &CurrentContext<'a>, value: i32) -> Self {
-        let mut obj = std::ptr::null_mut();
-        let r = unsafe {FRENewObjectFromInt32(value, &mut obj)};
+    pub fn new (_: &CurrentContext<'a>, value: i32) -> Self {
+        let mut object = MaybeUninit::<FREObject>::uninit();
+        let r = unsafe {FRENewObjectFromInt32(value, object.as_mut_ptr())};
         debug_assert!(r.is_ok());
-        assert!(!obj.is_null());
-        unsafe {transmute(obj)}
+        let object = unsafe {object.assume_init()};
+        assert!(!object.is_null());
+        unsafe {transmute(object)}
     }
-    fn value(self) -> i32 {
-        let mut val = i32::default();
-        let r = unsafe {FREGetObjectAsInt32(self.as_ptr(), &mut val)};
+    pub fn value(self) -> i32 {
+        let mut value = MaybeUninit::<i32>::uninit();
+        let r = unsafe {FREGetObjectAsInt32(self.as_ptr(), value.as_mut_ptr())};
         debug_assert!(r.is_ok());
-        val
+        unsafe {value.assume_init()}
     }
 }
-unsafe impl<'a> AsObject<'a> for int<'a> {const TYPE: Type = Type::Named("int");}
-impl From<int<'_>> for FREObject {fn from(value: int) -> Self {value.as_ptr()}}
-impl<'a> From<int<'a>> for Object<'a> {fn from(value: int<'a>) -> Self {value.as_object()}}
-impl Display for int<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {Display::fmt(&(self.value()), f)}}
 
 
-#[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct uint <'a> (NonNullFREObject, PhantomData<&'a()>);
+crate::class! {
+    /// A reference to the AS3 object `uint`.
+    /// 
+    /// Some methods are not yet implemented.
+    /// 
+    #[allow(non_camel_case_types)]
+    uint !PartialEq
+}
+impl PartialEq for uint<'_> {fn eq(&self, other: &Self) -> bool {self.value() == other.value()}}
+impl PartialEq<u32> for uint<'_> {fn eq(&self, other: &u32) -> bool {self.value() == *other}}
+impl PartialEq<uint<'_>> for u32 {fn eq(&self, other: &uint<'_>) -> bool {*self == other.value()}}
+impl Eq for uint<'_> {}
 impl<'a> uint<'a> {
-    #[allow(unused_variables)]
-    pub fn new (ctx: &CurrentContext<'a>, value: u32) -> Self {
-        let mut obj = std::ptr::null_mut();
-        let r = unsafe {FRENewObjectFromUint32(value, &mut obj)};
+    pub fn new (_: &CurrentContext<'a>, value: u32) -> Self {
+        let mut object = MaybeUninit::<FREObject>::uninit();
+        let r = unsafe {FRENewObjectFromUint32(value, object.as_mut_ptr())};
         debug_assert!(r.is_ok());
-        assert!(!obj.is_null());
-        unsafe {transmute(obj)}
+        let object = unsafe {object.assume_init()};
+        assert!(!object.is_null());
+        unsafe {transmute(object)}
     }
     pub fn value (self) -> u32 {
-        let mut val = u32::default();
-        let r = unsafe {FREGetObjectAsUint32(self.as_ptr(), &mut val)};
+        let mut value = MaybeUninit::<u32>::uninit();
+        let r = unsafe {FREGetObjectAsUint32(self.as_ptr(), value.as_mut_ptr())};
         debug_assert!(r.is_ok());
-        val
+        unsafe {value.assume_init()}
     }
 }
-unsafe impl<'a> AsObject<'a> for uint<'a> {const TYPE: Type = Type::Named("uint");}
-impl From<uint<'_>> for FREObject {fn from(value: uint) -> Self {value.as_ptr()}}
-impl<'a> From<uint<'a>> for Object<'a> {fn from(value: uint<'a>) -> Self {value.as_object()}}
-impl Display for uint<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {Display::fmt(&(self.value()), f)}}
 
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct Number <'a> (NonNullFREObject, PhantomData<&'a()>);
+crate::class! {@Typeof
+    /// A reference to the AS3 object `Number`.
+    /// 
+    /// Some methods are not yet implemented.
+    /// 
+    Number !PartialEq
+}
+impl PartialEq for Number<'_> {fn eq(&self, other: &Self) -> bool {self.value() == other.value()}}
+impl PartialEq<f64> for Number<'_> {fn eq(&self, other: &f64) -> bool {self.value() == *other}}
+impl PartialEq<Number<'_>> for f64 {fn eq(&self, other: &Number<'_>) -> bool {*self == other.value()}}
 impl<'a> Number<'a> {
-    #[allow(unused_variables)]
-    pub fn new (ctx: &CurrentContext<'a>, value: f64) -> Self {
-        let mut obj = std::ptr::null_mut();
-        let r = unsafe {FRENewObjectFromDouble(value, &mut obj)};
+    pub fn new (_: &CurrentContext<'a>, value: f64) -> Self {
+        let mut object = MaybeUninit::<FREObject>::uninit();
+        let r = unsafe {FRENewObjectFromDouble(value, object.as_mut_ptr())};
         debug_assert!(r.is_ok());
-        assert!(!obj.is_null());
-        unsafe {transmute(obj)}
+        let object = unsafe {object.assume_init()};
+        assert!(!object.is_null());
+        unsafe {transmute(object)}
     }
     pub fn value (self) -> f64 {
-        let mut val = f64::default();
-        let r = unsafe {FREGetObjectAsDouble(self.as_ptr(), &mut val)};
+        let mut value = MaybeUninit::<f64>::uninit();
+        let r = unsafe {FREGetObjectAsDouble(self.as_ptr(), value.as_mut_ptr())};
         debug_assert!(r.is_ok());
-        val
+        unsafe {value.assume_init()}
     }
 }
-unsafe impl<'a> AsObject<'a> for Number<'a> {const TYPE: Type = Type::Number;}
-unsafe impl<'a> TryAs<'a, Number<'a>> for Object<'a> {}
-impl From<Number<'_>> for FREObject {fn from(value: Number) -> Self {value.as_ptr()}}
-impl<'a> From<Number<'a>> for Object<'a> {fn from(value: Number<'a>) -> Self {value.as_object()}}
-impl<'a> TryFrom<Object<'a>> for Number<'a> {type Error = Type; fn try_from (value: Object<'a>) -> Result<Self, Type> {value.try_as()}}
-impl Display for Number<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {Display::fmt(&self.as_object(), f)}}
 
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct Boolean <'a> (NonNullFREObject, PhantomData<&'a()>);
+crate::class! {@Typeof
+    /// A reference to the AS3 object `Boolean`.
+    /// 
+    Boolean !PartialEq
+}
+impl PartialEq for Boolean<'_> {fn eq(&self, other: &Self) -> bool {self.value() == other.value()}}
+impl PartialEq<bool> for Boolean<'_> {fn eq(&self, other: &bool) -> bool {self.value() == *other}}
+impl PartialEq<Boolean<'_>> for bool {fn eq(&self, other: &Boolean<'_>) -> bool {*self == other.value()}}
+impl Eq for Boolean<'_> {}
 impl<'a> Boolean<'a> {
-    #[allow(unused_variables)]
-    pub fn new (ctx: &CurrentContext<'a>, value: bool) -> Self {
+    pub fn new (_: &CurrentContext<'a>, value: bool) -> Self {
         let value = if value {1} else {0};
-        let mut obj = std::ptr::null_mut();
-        let r = unsafe {FRENewObjectFromBool(value, &mut obj)};
+        let mut object = MaybeUninit::<FREObject>::uninit();
+        let r = unsafe {FRENewObjectFromBool(value, object.as_mut_ptr())};
         debug_assert!(r.is_ok());
-        assert!(!obj.is_null());
-        unsafe {transmute(obj)}
+        let object = unsafe {object.assume_init()};
+        assert!(!object.is_null());
+        unsafe {transmute(object)}
     }
     pub fn value (self) -> bool {
-        let mut val = u32::default();
-        let r = unsafe {FREGetObjectAsBool(self.as_ptr(), &mut val)};
+        let mut value = MaybeUninit::<u32>::uninit();
+        let r = unsafe {FREGetObjectAsBool(self.as_ptr(), value.as_mut_ptr())};
         debug_assert!(r.is_ok());
-        val != 0
+        let value: u32 = unsafe {value.assume_init()};
+        value != 0
     }
 }
-unsafe impl<'a> AsObject<'a> for Boolean<'a> {const TYPE: Type = Type::Boolean;}
-unsafe impl<'a> TryAs<'a, Boolean<'a>> for Object<'a> {}
-impl From<Boolean<'_>> for FREObject {fn from(value: Boolean) -> Self {value.as_ptr()}}
-impl<'a> From<Boolean<'a>> for Object<'a> {fn from(value: Boolean<'a>) -> Self {value.as_object()}}
-impl<'a> TryFrom<Object<'a>> for Boolean<'a> {type Error = Type; fn try_from (value: Object<'a>) -> Result<Self, Type> {value.try_as()}}
-impl Display for Boolean<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {Display::fmt(&(self.value()), f)}}
 
 
-/// Represents an ActionScript `String` object.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct StringObject <'a> (NonNullFREObject, PhantomData<&'a()>);
-impl<'a> StringObject<'a> {
-    #[allow(unused_variables)]
-    pub fn new (ctx: &CurrentContext<'a>, value: &str) -> Self {
+//
+// TODO: Implement methods of `String`.
+//
+crate::class! {@Typeof
+    /// A reference to the AS3 object `String`.
+    /// 
+    /// Some methods are not yet implemented.
+    /// 
+    String !PartialEq
+}
+impl PartialEq for String<'_> {fn eq(&self, other: &Self) -> bool {self.value() == other.value()}}
+impl PartialEq<str> for String<'_> {fn eq(&self, other: &str) -> bool {self.value() == other}}
+impl PartialEq<StdString> for String<'_> {fn eq(&self, other: &StdString) -> bool {self.value() == other.as_str()}}
+impl PartialEq<Cow<'_, str>> for String<'_> {fn eq(&self, other: &Cow<'_, str>) -> bool {self.value() == other.as_ref()}}
+impl PartialEq<Box<str>> for String<'_> {fn eq(&self, other: &Box<str>) -> bool {self.value() == other.as_ref()}}
+impl PartialEq<Rc<str>> for String<'_> {fn eq(&self, other: &Rc<str>) -> bool {self.value() == other.as_ref()}}
+impl PartialEq<Arc<str>> for String<'_> {fn eq(&self, other: &Arc<str>) -> bool {self.value() == other.as_ref()}}
+impl PartialEq<UCStr> for String<'_> {fn eq(&self, other: &UCStr) -> bool {self.value() == other.as_str()}}
+impl PartialEq<String<'_>> for str {fn eq(&self, other: &String<'_>) -> bool {self == other.value()}}
+impl PartialEq<String<'_>> for StdString {fn eq(&self, other: &String<'_>) -> bool {PartialEq::eq(other, self)}}
+impl PartialEq<String<'_>> for Cow<'_, str> {fn eq(&self, other: &String<'_>) -> bool {PartialEq::eq(other, self)}}
+impl PartialEq<String<'_>> for Box<str> {fn eq(&self, other: &String<'_>) -> bool {PartialEq::eq(other, self)}}
+impl PartialEq<String<'_>> for Rc<str> {fn eq(&self, other: &String<'_>) -> bool {PartialEq::eq(other, self)}}
+impl PartialEq<String<'_>> for Arc<str> {fn eq(&self, other: &String<'_>) -> bool {PartialEq::eq(other, self)}}
+impl PartialEq<String<'_>> for UCStr {fn eq(&self, other: &String<'_>) -> bool {PartialEq::eq(other, self)}}
+impl Eq for String<'_> {}
+impl<'a> String<'a> {
+    pub fn new (_: &CurrentContext<'a>, value: &str) -> Self {
         let value = value.as_bytes();
         debug_assert!(value.len() <= u32::MAX as usize);
-        let mut obj = std::ptr::null_mut();
-        let r = unsafe {FRENewObjectFromUTF8(value.len() as u32, value.as_ptr(), &mut obj)};
+        let mut object = MaybeUninit::<FREObject>::uninit();
+        let r = unsafe {FRENewObjectFromUTF8(value.len() as u32, value.as_ptr(), object.as_mut_ptr())};
         debug_assert!(r.is_ok());
-        assert!(!obj.is_null());
-        unsafe {transmute(obj)}
+        let object = unsafe {object.assume_init()};
+        assert!(!object.is_null());
+        unsafe {transmute(object)}
     }
     pub fn value (self) -> &'a str {
-        let mut len = u32::default();
-        let mut ptr = std::ptr::null();
-        let r = unsafe {FREGetObjectAsUTF8(self.as_ptr(), &mut len, &mut ptr)};
+        let mut len = MaybeUninit::<u32>::uninit();
+        let mut ptr = MaybeUninit::<FREStr>::uninit();
+        let r = unsafe {FREGetObjectAsUTF8(self.as_ptr(), len.as_mut_ptr(), ptr.as_mut_ptr())};
         debug_assert!(r.is_ok());
+        let len = unsafe {len.assume_init()};
+        let ptr = unsafe {ptr.assume_init()};
+        assert!(!ptr.is_null());
         let bytes = unsafe {std::slice::from_raw_parts(ptr, len as usize)};
         unsafe {str::from_utf8_unchecked(bytes)}
     }
 }
-unsafe impl<'a> AsObject<'a> for StringObject<'a> {const TYPE: Type = Type::String;}
-unsafe impl<'a> TryAs<'a, StringObject<'a>> for Object<'a> {}
-impl From<StringObject<'_>> for FREObject {fn from(value: StringObject) -> Self {value.as_ptr()}}
-impl<'a> From<StringObject<'a>> for Object<'a> {fn from(value: StringObject<'a>) -> Self {value.as_object()}}
-impl<'a> TryFrom<Object<'a>> for StringObject<'a> {type Error = Type; fn try_from (value: Object<'a>) -> Result<Self, Type> {value.try_as()}}
-impl Display for StringObject<'_> {fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {Display::fmt(self.value(), f)}}
+impl<'a> AsRef<str> for String<'a> {fn as_ref(&self) -> &'a str {self.value()}}
+

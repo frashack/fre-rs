@@ -1,25 +1,25 @@
 use super::*;
 
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub enum ExternalError<'a> {
     C(FfiError),
 
     /// May be [`None`] if the thrown object is ignored or unavailable.
-    ActionScript(Option<as3::Object<'a>>),
+    ActionScript(Option<Object<'a>>),
 }
 impl<'a> ExternalError<'a> {
     /// Attempts to convert a [`FREResult`] into [`ExternalError`].
     ///
-    /// If the result represents an ActionScript error and `thrown` is [`Some`],
+    /// If the result represents an AS3 error and `thrown` is [`Some`],
     /// the provided object is used as the error object.
     ///
     /// If `thrown` is [`None`], the thrown object is ignored or unavailable.
     ///
-    /// When an ActionScript throw occurs, the provided object is assumed to be a valid [`as3::Object`].
-    /// However, ActionScript may throw [`as3::null`].
+    /// When an AS3 throw occurs, the provided object is assumed to be a valid [`Object`].
+    /// However, AS3 may throw [`as3::null`].
     /// 
-    pub fn try_from (result: FREResult, thrown: Option<as3::Object<'a>>) -> Option<Self> {
+    pub fn try_from (result: FREResult, thrown: Option<Object<'a>>) -> Option<Self> {
         let r = <Self as TryFrom<FREResult>>::try_from(result);
         if let Ok(Self::ActionScript(_)) = r {
             Some(Self::ActionScript(thrown))
@@ -82,11 +82,11 @@ impl Display for FfiError {
             FfiError::WrongThread => write!(f, "{PREFIX} The method was called from a thread other than the one on which the runtime has an outstanding call to a native extension function."),
             FfiError::IllegalState => write!(f, "{PREFIX} A call was made to a native extensions C API function when the extension context was in an illegal state for that call. This return value occurs in the following situation. The context has acquired access to an ActionScript BitmapData or ByteArray class object. With one exception, the context can call no other C API functions until it releases the BitmapData or ByteArray object. The one exception is that the context can call `FREInvalidateBitmapDataRect()` after calling `FREAcquireBitmapData()` or `FREAcquireBitmapData2()`."),
             FfiError::InsufficientMemory => write!(f, "{PREFIX} The runtime could not allocate enough memory to change the size of an Array or Vector object."),
-            FfiError::UnexpectedResult(code) => write!(f, "{PREFIX} Unexpected FREResult. ({code:#08X})"),
+            FfiError::UnexpectedResult(code) => write!(f, "{PREFIX} Unexpected FREResult({code})."),
         }
     }
 }
-impl Error for FfiError {}
+impl std::error::Error for FfiError {}
 impl TryFrom<FREResult> for FfiError {
     type Error = ();
 
@@ -126,7 +126,7 @@ impl Display for ContextError {
         write!(f, "[ContextError] {self:?}")
     }
 }
-impl Error for ContextError {}
+impl std::error::Error for ContextError {}
 impl From<FfiError> for ContextError {
     fn from(value: FfiError) -> Self {Self::FfiCallFailed(value)}
 }

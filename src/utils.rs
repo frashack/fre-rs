@@ -1,9 +1,11 @@
 use super::*;
 
 
+#[inline]
 #[allow(unsafe_op_in_unsafe_fn)]
-pub(crate) unsafe fn transmute_unchecked <T: Copy, U: Copy> (any: T) -> U {
-    *(std::ptr::addr_of!(any) as *const U)
+pub(crate) unsafe fn transmute_unchecked <O:, T: Copy> (any: O) -> T {
+    debug_assert_eq!(std::mem::size_of::<O>(), std::mem::size_of::<T>());
+    *(std::ptr::addr_of!(any) as *const T)
 }
 
 
@@ -275,3 +277,4 @@ impl<'a> Iterator for MediaBufferDataIterMut<'a> {
         } else {None}
     }
 }
+

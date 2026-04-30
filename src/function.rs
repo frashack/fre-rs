@@ -27,19 +27,17 @@ pub type ContextInitializer = fn (ctx: &CurrentContext) -> (Option<Box<dyn Any>>
 pub type ContextFinalizer = fn (ctx: &CurrentContext);
 
 /// The function can be associated with a [`Context`] and treated as its method.
-/// 
-/// This signature is intended to match the closure accepted by [`CurrentContext::with_method`].
 ///
-/// Although the signature returns `as3::Object<'a>`, implementations may return
-/// any type implementing `Into<as3::Object<'a>> + 'a`, primarily to support
-/// types like `Option<AsObject<'a>>`.
+/// Although the signature returns [`Object<'a>`], implementations may return
+/// any type implementing [`Into<Object> + 'a`], primarily to support
+/// types like [`Option<AsObject<'a>>`].
 /// 
-pub type Function <'a> = fn (ctx: &CurrentContext<'a>, func_data: Option<&mut dyn Any>, args: &[as3::Object<'a>]) -> as3::Object<'a>;
+pub type Function <'a> = fn (ctx: &CurrentContext<'a>, func_data: Option<&mut dyn Any>, args: &[Object<'a>]) -> Object<'a>;
 
 
 /// **In typical usage of this crate, instances of this type should not be constructed directly.**
 /// 
-/// The [`crate::function!`] macro should be used to construct this type, as it provides a safer abstraction.
+/// The [`function!`] macro should be used to construct this type, as it provides a safer abstraction.
 /// 
 #[derive(Debug)]
 pub struct FunctionImplementation {
@@ -59,7 +57,7 @@ impl FunctionImplementation {
 ///
 /// This type is used to construct a set of functions for a [`Context`].
 /// Once registered, these functions are referred to as *methods* within this crate,
-/// and can be invoked from ActionScript via `ExtensionContext.call`.
+/// and can be invoked from AS3 via `ExtensionContext.call`.
 /// 
 #[derive(Debug)]
 pub struct FunctionSet {
@@ -158,3 +156,27 @@ impl From<FunctionSet> for MethodSet {
 impl AsRef<[FRENamedFunction]> for MethodSet {
     fn as_ref(&self) -> &[FRENamedFunction] {self.registry.as_ref()}
 }
+
+
+/// Sends a message to the debugger output.
+/// 
+/// Delivery is not guaranteed; the `message` may not be presented.
+/// 
+/// # Panics
+///
+/// Panics if no [`CurrentContext`] exists. The call must occur within an
+/// active native function call from the Flash runtime main thread.
+/// 
+/// # Examples
+/// 
+/// ```
+/// use fre_rs::prelude::*;
+/// fn func <'a> (_: CurrentContext<'a>, args: &[Object<'a>]) {
+///     trace("Hello, Flash runtime!");
+///     trace(args);
+///     trace(args[0]);
+/// }
+/// ```
+/// 
+pub fn trace(message: impl ToUcstrLossy) {crate::context::stack::current_context().trace(message);}
+

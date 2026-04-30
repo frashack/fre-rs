@@ -1,10 +1,3 @@
-//! 
-//! Miscellaneous items that do not yet have a clear module placement.
-//! Their current structure is not ideal and may be refactored as the crate
-//! evolves or as the underlying ANE C API improves.
-//! 
-
-
 use super::*;
 
 
@@ -52,7 +45,8 @@ impl Display for RenderMode {
             Self::DirectD3d11       => write!(f, "Direct (Direct3D 11)"),
             Self::SoftwareGdi       => write!(f, "Software (GDI)"),
             Self::GpuOgles          => write!(f, "GPU (OpenGL ES)"),
-            Self::Unexpected(rm) => write!(f, "Unexpected FRERenderMode. ({rm:#08X})"),
+            Self::Unexpected(mode) => write!(f, "Unexpected FRERenderMode({mode})."),
         }
     }
 }
+

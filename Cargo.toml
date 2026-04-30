@@ -1,6 +1,6 @@
 [package]
 name = "fre-rs"
-version = "0.2.3"
+version = "0.3.0"
 edition = "2024"
 
 authors = ["Frashack <reeceyao@qq.com>"]
@@ -31,4 +31,5 @@ targets = [
 default-target = "x86_64-pc-windows-msvc"
 
 [dependencies]
-fre-sys = "0.1"
+fre-sys = "0.2"
+

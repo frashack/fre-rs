@@ -8,7 +8,7 @@ use super::*;
 
 
 pub type NonNullFREData = NonNull<c_void>;
-pub type NonNullFREObject = NonNull<c_void>;
+pub type NonNullHandle = NonNull<c_void>;
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,6 +32,8 @@ impl Default for NonNegativeInt {
 
 
 /// A UTF-8 string stored as a NUL-terminated [`CStr`].
+/// 
+/// Use the [`ucstringify!`] macro to construct [`UCStr`] constants.
 /// 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UCStr(UCStrValue);
@@ -154,16 +156,47 @@ impl Display for UCStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Display::fmt(self.as_str(), f) }
 }
 impl Default for UCStr {
-    fn default() -> Self {unsafe {Self::from_literal_unchecked(c"")}}
+    fn default() -> Self {Self(UCStrValue::Static(c""))}
 }
 
 
 pub trait ToUcstrLossy {
     fn to_ucstr_lossy(&self) -> UCStr;
 }
-impl ToUcstrLossy for UCStr {
-    fn to_ucstr_lossy(&self) -> UCStr {self.clone()}
+macro_rules! impl_to_ucstr_lossy {
+    {// #0
+        ref $self:ident: $ty:ty
+        $body:block
+        $(<$($gps:tt)+)? 
+    } => {
+        impl $(<$($gps)+)? ToUcstrLossy for & $ty {fn to_ucstr_lossy(&self) -> UCStr {<$ty as ToUcstrLossy>::to_ucstr_lossy(*self)}}
+        impl $(<$($gps)+)? ToUcstrLossy for &mut $ty {fn to_ucstr_lossy(&self) -> UCStr {<$ty as ToUcstrLossy>::to_ucstr_lossy(*self)}}
+        impl $(<$($gps)+)? ToUcstrLossy for $ty {fn to_ucstr_lossy(&self) -> UCStr {let $self = self; $body}}
+    };
 }
+impl_to_ucstr_lossy! {ref this: UCStr {
+    this.clone()
+}}
+impl_to_ucstr_lossy! {ref this: str {
+    this.replace('\0', "�")
+        .try_into()
+        .unwrap()
+}}
+impl_to_ucstr_lossy! {ref this: String {
+    this.as_str().to_ucstr_lossy()
+}}
+impl_to_ucstr_lossy! {ref this: CStr {
+    let s = this.to_string_lossy();
+    let bytes = s.as_bytes();
+    let mut v = Vec::with_capacity(bytes.len()+1);
+    v.extend_from_slice(bytes);
+    v.push(0);
+    let s = unsafe {CString::from_vec_unchecked(v)};
+    UCStr(UCStrValue::Heap(s.into()))
+}}
+impl_to_ucstr_lossy! {ref this: CString {
+    this.as_c_str().to_ucstr_lossy()
+}}
 impl<'a, O: AsObject<'a>> ToUcstrLossy for O {
     fn to_ucstr_lossy(&self) -> UCStr {
         self.to_string()
@@ -171,27 +204,46 @@ impl<'a, O: AsObject<'a>> ToUcstrLossy for O {
             .to_ucstr_lossy()
     }
 }
-impl<'a, O: AsObject<'a>> ToUcstrLossy for &[O] {
-    fn to_ucstr_lossy(&self) -> UCStr {
-        self.iter()
-            .map(|o|{o.to_string()})
-            .collect::<Vec<_>>()
-            .join(", ")
-            .as_str()
-            .to_ucstr_lossy()
-    }
-}
-impl ToUcstrLossy for &str {
-    fn to_ucstr_lossy(&self) -> UCStr {
-        self.replace('\0', "�")
-            .try_into()
-            .unwrap()
-    }
-}
-impl ToUcstrLossy for String {
-    fn to_ucstr_lossy(&self) -> UCStr {
-        self.as_str()
-            .to_ucstr_lossy()
-    }
-}
+impl<'a> ToUcstrLossy for & as3::Object<'a> {fn to_ucstr_lossy(&self) -> UCStr {<as3::Object as ToUcstrLossy>::to_ucstr_lossy(*self)}}
+impl<'a> ToUcstrLossy for &mut as3::Object<'a> {fn to_ucstr_lossy(&self) -> UCStr {<as3::Object as ToUcstrLossy>::to_ucstr_lossy(*self)}}
+// crate::class! (...);
+impl_to_ucstr_lossy! {ref this: Option<O> {
+    if let Some(object) = this {
+        object.to_ucstr_lossy()
+    } else {crate::ucstringify!(null)}
+} <'a, O: AsObject<'a>> }
+impl_to_ucstr_lossy! {ref this: [O] {
+    this.iter()
+        .map(|object|object.to_string())
+        .collect::<Vec<String>>()
+        .join(", ")
+        .as_str()
+        .to_ucstr_lossy()
+} <'a, O: AsObject<'a>> }
+impl_to_ucstr_lossy! {ref this: [Option<O>] {
+    this.iter()
+        .map(|object|{
+            if let Some(object) = object {
+                object.to_string()
+            } else {String::from("null")}
+        })
+        .collect::<Vec<String>>()
+        .join(", ")
+        .as_str()
+        .to_ucstr_lossy()
+} <'a, O: AsObject<'a>> }
+impl_to_ucstr_lossy! {ref this: [O; LEN] {
+    this.as_slice().to_ucstr_lossy()
+} <'a, O: AsObject<'a>,
+const LEN: usize> }
+impl_to_ucstr_lossy! {ref this: [Option<O>; LEN] {
+    this.as_slice().to_ucstr_lossy()
+} <'a, O: AsObject<'a>,
+const LEN: usize> }
+impl_to_ucstr_lossy! {ref this: Vec<O> {
+    this.as_slice().to_ucstr_lossy()
+} <'a, O: AsObject<'a>> }
+impl_to_ucstr_lossy! {ref this: Vec<Option<O>> {
+    this.as_slice().to_ucstr_lossy()
+} <'a, O: AsObject<'a>> }
 

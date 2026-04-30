@@ -45,8 +45,8 @@ fn init_ctx(_: &CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet) {
 }
 fre_rs::function! {
     hello (ctx, _, args) -> as3::String {
-        ctx.trace(args);
-        as3::String::new(ctx, "Hello! Flash Runtime.")
+        trace(args);
+        as3::String::new(ctx, "Hello, Flash runtime!")
     }
 }
 ```
