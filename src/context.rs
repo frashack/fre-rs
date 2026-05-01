@@ -174,7 +174,13 @@ impl<'a> CooperativeContext<'a> {
 
     /// Provides immutable access to the [`ContextRegistry`] within a closure.
     /// 
-    /// [`Err`]=> [`ContextError::InvalidContext`], [`ContextError::NullRegistry`], [`ContextError::InvalidRegistry`], [`ContextError::FfiCallFailed`], [`ContextError::BorrowRegistryConflict`];
+    /// # Errors
+    /// 
+    /// - [`ContextError::InvalidContext`]
+    /// - [`ContextError::NullRegistry`]
+    /// - [`ContextError::InvalidRegistry`]
+    /// - [`ContextError::FfiCallFailed`]
+    /// - [`ContextError::BorrowRegistryConflict`]
     /// 
     pub fn with <F, R> (self, f: F) -> Result<R, ContextError>
     where F: FnOnce (&ContextRegistry) -> R {
@@ -191,7 +197,13 @@ impl<'a> CooperativeContext<'a> {
 
     /// Provides mutable access to the [`ContextRegistry`] within a closure.
     /// 
-    /// [`Err`]=> [`Self::with`];
+    /// # Errors
+    /// 
+    /// - [`ContextError::InvalidContext`]
+    /// - [`ContextError::NullRegistry`]
+    /// - [`ContextError::InvalidRegistry`]
+    /// - [`ContextError::FfiCallFailed`]
+    /// - [`ContextError::BorrowRegistryConflict`]
     /// 
     pub fn with_mut <F, R> (self, f: F) -> Result<R, ContextError>
     where F: FnOnce (&mut ContextRegistry) -> R {
@@ -210,7 +222,14 @@ impl<'a> CooperativeContext<'a> {
     /// 
     /// Nested calls increase complexity. Callers must consider borrowing rules and context validity.
     /// 
-    /// [`Err`]=> [`Self::with`], [`ContextError::MethodNotFound`];
+    /// # Errors
+    /// 
+    /// - [`ContextError::InvalidContext`]
+    /// - [`ContextError::NullRegistry`]
+    /// - [`ContextError::InvalidRegistry`]
+    /// - [`ContextError::FfiCallFailed`]
+    /// - [`ContextError::BorrowRegistryConflict`]
+    /// - [`ContextError::MethodNotFound`]
     /// 
     pub fn call_method (self, name: &str, args: Option<&[Object<'a>]> ) -> Result<Object<'a>, ContextError> {
         let (func, data) = self.with(|ctx_reg| {
@@ -552,12 +571,12 @@ pub(crate) mod stack {
     #[allow(unsafe_op_in_unsafe_fn)]
     pub unsafe fn with <'a, F, R> (ctx: &'a FREContext, f: F) -> R
     where
-        F: FnOnce (&CurrentContext<'a>) -> R,
+        F: FnOnce (&mut CurrentContext<'a>) -> R,
         R: 'a,
     {
-        let ctx = CurrentContext::new(ctx);
+        let mut ctx = CurrentContext::new(ctx);
         stack::push(ctx.0);
-        let r = f(&ctx);
+        let r = f(&mut ctx);
         let popped = stack::pop();
         debug_assert_eq!(ctx.0, popped.expect("Context unexpectedly missing from stack."), "The context pushed at the beginning of this function must be popped at the end.");
         r
@@ -584,15 +603,15 @@ pub(crate) mod stack {
     /// Violating these assumptions may lead to undefined behavior.
     /// 
     #[allow(unsafe_op_in_unsafe_fn)]
-    pub unsafe fn with_initializer <F> (
+    pub unsafe fn with_initializer <'a, F> (
         ext_data: FREData,// &'extension mut
         ctx_type: FREStr,// &'function
-        ctx: &FREContext,// &'function
+        ctx: &'a FREContext,// &'function
         num_funcs_to_set: *mut u32,// return
         funcs_to_set: *mut *const FRENamedFunction,// return &'context mut
         f: F
     )
-    where F: for<'a> FnOnce (&'a CurrentContext<'a>) -> (Option<Box<dyn Any>>, FunctionSet)
+    where F: FnOnce (&mut CurrentContext<'a>) -> (Option<Box<dyn Any>>, FunctionSet)
     {
         assert!(!num_funcs_to_set.is_null());
         assert!(!funcs_to_set.is_null());
@@ -644,7 +663,7 @@ pub(crate) mod stack {
         f: F
     ) -> FREObject
     where
-        F: FnOnce (&CurrentContext<'a>, Option<&mut dyn Any>, &[Object<'a>]) -> R,
+        F: FnOnce (&mut CurrentContext<'a>, Option<&mut dyn Any>, &[Object<'a>]) -> R,
         R: Into<Object<'a>> + 'a
     {
         assert!(!argv.is_null() || argc==0);

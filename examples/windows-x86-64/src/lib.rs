@@ -7,7 +7,7 @@ fre_rs::extension! {
 }
 
 
-fn init_ctx (ctx: &CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet) {
+fn init_ctx (ctx: &mut CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet) {
     assert_eq!(ctx.ty().unwrap_or_default().as_str(), "test");
     
     let mut funcs = FunctionSet::with_capacity(1);

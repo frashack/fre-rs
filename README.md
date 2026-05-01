@@ -38,7 +38,7 @@ fre_rs::extension! {
     extern Initializer;
     gen init_ctx, final;
 }
-fn init_ctx(_: &CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet) {
+fn init_ctx(_: &mut CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet) {
     let mut funcs = FunctionSet::new();
     funcs.add(None, None, hello);
     (None, funcs)

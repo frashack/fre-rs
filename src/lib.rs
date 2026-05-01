@@ -40,7 +40,6 @@
 //!
 
 
-
 /// Namespace for ActionScript 3 classes and objects.
 /// 
 pub mod as3 {

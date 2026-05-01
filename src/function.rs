@@ -19,19 +19,19 @@ pub type Finalizer = fn (ext_data: Option<Box<dyn Any>>);
 /// The first return value sets the Context Data.
 /// The second return value sets the methods associated with the [`Context`].
 /// 
-pub type ContextInitializer = fn (ctx: &CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet);
+pub type ContextInitializer = fn (ctx: &mut CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet);
 
 /// The function is called before the Context Data is disposed,
 /// allowing final access and saving data to the Extension Data.
 ///
-pub type ContextFinalizer = fn (ctx: &CurrentContext);
+pub type ContextFinalizer = fn (ctx: &mut CurrentContext);
 
 /// The function can be associated with a [`Context`] and treated as its method.
 ///
 /// Although the signature returns [`Object<'a>`], implementations may return
 /// any type implementing [`Into<Object> + 'a`], primarily to support types like [`Option<AsObject<'a>>`].
 /// 
-pub type Function <'a> = fn (ctx: &CurrentContext<'a>, func_data: Option<&mut dyn Any>, args: &[Object<'a>]) -> Object<'a>;
+pub type Function <'a> = fn (ctx: &mut CurrentContext<'a>, func_data: Option<&mut dyn Any>, args: &[Object<'a>]) -> Object<'a>;
 
 
 /// Represents a native function implementation that can be registered as a method.

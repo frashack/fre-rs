@@ -27,7 +27,7 @@ use super::*;
 ///     fn finalizer(ext_data: Option<Box<dyn Any>>) {
 ///         assert_eq!(NativeData::from_boxed(ext_data.unwrap()).unwrap().0, -3);
 ///     }
-///     fn context_initializer(ctx: &CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet) {
+///     fn context_initializer(ctx: &mut CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet) {
 ///         let context_data = NativeData(-2).into_boxed();
 ///         let mut funcs = FunctionSet::with_capacity(1);
 ///         let function_data = NativeData(-1).into_boxed();
@@ -38,12 +38,12 @@ use super::*;
 ///         }
 ///         return (Some(context_data), funcs);
 ///     }
-///     fn context_finalizer(ctx: &CurrentContext) {
+///     fn context_finalizer(ctx: &mut CurrentContext) {
 ///         let context_data: &NativeData = ctx.data().unwrap().downcast_ref().unwrap();
 ///         assert_eq!(context_data.0, -2);
 ///         ctx.set_actionscript_data(as3::null)
 ///     }
-///     fn method_implementation <'a> (ctx: &CurrentContext<'a>, data: Option<&mut dyn Any>, args: &[Object<'a>]) -> Object<'a> {as3::null}
+///     fn method_implementation <'a> (ctx: &mut CurrentContext<'a>, data: Option<&mut dyn Any>, args: &[Object<'a>]) -> Object<'a> {as3::null}
 ///     fre_rs::function! (method_name use method_implementation);
 ///     fre_rs::function! {
 ///         method_name2 (ctx, data, args) -> Option<as3::Array> {
@@ -62,7 +62,7 @@ use super::*;
 ///         extern symbol_initializer;
 ///         gen context_initializer, final;
 ///     }
-///     fn context_initializer(_: &CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet) {
+///     fn context_initializer(_: &mut CurrentContext) -> (Option<Box<dyn Any>>, FunctionSet) {
 ///         let mut funcs = FunctionSet::new();
 ///         funcs.add(None, None, method_name);
 ///         (None, funcs)
@@ -105,7 +105,7 @@ macro_rules! extension {
                         let context_finalizer: $crate::function::ContextFinalizer = $context_finalizer;
                         context_finalizer(ctx);
                     )?
-                    let ctx = *(ctx as *const $crate::context::CurrentContext as *const $crate::context::ForeignContext);
+                    let ctx = *(ctx as *mut $crate::context::CurrentContext as *mut $crate::context::ForeignContext);
                     let raw = ctx
                         .get_native_data()
                         .expect("Failed to retrieve native data from FFI.")
@@ -210,7 +210,7 @@ macro_rules! extension {
 ///         }
 ///     }
 ///     fre_rs::function! (method_name2 use method_implementation);
-///     fn method_implementation <'a> (ctx: &CurrentContext<'a>, data: Option<&mut dyn Any>, args: &[Object<'a>]) -> Object<'a> {as3::null}
+///     fn method_implementation <'a> (ctx: &mut CurrentContext<'a>, data: Option<&mut dyn Any>, args: &[Object<'a>]) -> Object<'a> {as3::null}
 /// }
 /// ```
 /// # Minimal Examples
@@ -238,7 +238,7 @@ macro_rules! function {
                 argv: *const $crate::c::FREObject,
             ) -> $crate::c::FREObject {
                 fn func <'a> (
-                    ctx: &$crate::context::CurrentContext<'a>,
+                    ctx: &mut $crate::context::CurrentContext<'a>,
                     func_data: Option<&mut dyn ::std::any::Any>,
                     args: &[$crate::as3::Object<'a>],
                 ) -> $crate::as3::Object<'a> {
@@ -280,7 +280,7 @@ macro_rules! function {
         @Parameters [$c:ident, $d:ident, $a:ident $(,)?]
         $ctx:ident, $data:ident, $args:ident $(,)?
     } => {
-        let $ctx: &$crate::context::CurrentContext<'a> = $c;
+        let $ctx: &mut $crate::context::CurrentContext<'a> = $c;
         let $data: Option<&mut dyn ::std::any::Any> = $d;
         let $args: &[$crate::as3::Object<'a>] = $a;
     };
@@ -356,7 +356,7 @@ macro_rules! function {
 /// use fre_rs::prelude::*;
 /// fre_rs::class! (EventDispatcher);
 /// impl<'a> EventDispatcher<'a> {
-///     pub fn new (ctx: &CurrentContext<'a>) -> Self {
+///     pub fn new (ctx: &mut CurrentContext<'a>) -> Self {
 ///        unsafe {ctx.construct(fre_rs::ucstringify!(flash.events.EventDispatcher), None)
 ///             .expect("Object construction failed.")
 ///             .as_unchecked()}
