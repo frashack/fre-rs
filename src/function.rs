@@ -170,12 +170,12 @@ impl AsRef<[FRENamedFunction]> for MethodSet {
 /// 
 /// ```
 /// use fre_rs::prelude::*;
-/// fn func <'a> (_: CurrentContext<'a>, args: &[Object<'a>]) {
+/// fn func <'a> (_: &mut CurrentContext<'a>, args: &[Object<'a>]) {
 ///     trace("Hello, Flash runtime!");
 ///     trace(args);
 ///     trace(args[0]);
 /// }
 /// ```
 /// 
-pub fn trace(message: impl ToUcstrLossy) {crate::context::stack::current_context().trace(message);}
+pub fn trace <T: ToUcstrLossy + Sized> (message: T) {crate::context::stack::current_context().trace(message);}
 

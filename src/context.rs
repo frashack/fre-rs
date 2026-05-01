@@ -395,14 +395,14 @@ pub trait Context<'a>: Sealed {
     /// 
     /// ```
     /// use fre_rs::prelude::*;
-    /// fn func <'a> (ctx: CurrentContext<'a>, args: &[Object<'a>]) {
+    /// fn func <'a> (ctx: &mut CurrentContext<'a>, args: &[Object<'a>]) {
     ///     ctx.trace("Hello, Flash runtime!");
     ///     ctx.trace(args);
     ///     ctx.trace(args[0]);
     /// }
     /// ```
     /// 
-    fn trace (&self, message: impl ToUcstrLossy) {
+    fn trace <T: ToUcstrLossy + Sized> (&self, message: T) {
         let r = unsafe {FRETrace(self.as_ptr(), message.to_ucstr_lossy().as_ptr())};
         debug_assert!(r.is_ok(), "{}", FfiError::try_from(r).unwrap());
     }

@@ -459,8 +459,10 @@ macro_rules! class {
         
         impl ::std::fmt::Display for $name<'_> {fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {::std::fmt::Display::fmt(&(<Self as $crate::types::object::AsNonNullObject>::as_non_null_object(*self)), f)}}
         
-        impl<'a> $crate::validated::ToUcstrLossy for & $name<'a> {fn to_ucstr_lossy(&self) -> $crate::validated::UCStr {<$name as $crate::validated::ToUcstrLossy>::to_ucstr_lossy(*self)}}
-        impl<'a> $crate::validated::ToUcstrLossy for &mut $name<'a> {fn to_ucstr_lossy(&self) -> $crate::validated::UCStr {<$name as $crate::validated::ToUcstrLossy>::to_ucstr_lossy(*self)}}
+        impl $crate::validated::ToUcstrLossy for $name<'_> {fn to_ucstr_lossy(&self) -> $crate::validated::UCStr {
+            let object = <$name as $crate::types::object::AsObject>::as_object(*self);
+            <$crate::as3::Object as $crate::validated::ToUcstrLossy>::to_ucstr_lossy(&object)
+        }}
     };
 }
 

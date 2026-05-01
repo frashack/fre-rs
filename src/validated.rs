@@ -163,87 +163,225 @@ impl Default for UCStr {
 pub trait ToUcstrLossy {
     fn to_ucstr_lossy(&self) -> UCStr;
 }
-macro_rules! impl_to_ucstr_lossy {
-    {// #0
-        ref $self:ident: $ty:ty
-        $body:block
-        $(<$($gps:tt)+)? 
-    } => {
-        impl $(<$($gps)+)? ToUcstrLossy for & $ty {fn to_ucstr_lossy(&self) -> UCStr {<$ty as ToUcstrLossy>::to_ucstr_lossy(*self)}}
-        impl $(<$($gps)+)? ToUcstrLossy for &mut $ty {fn to_ucstr_lossy(&self) -> UCStr {<$ty as ToUcstrLossy>::to_ucstr_lossy(*self)}}
-        impl $(<$($gps)+)? ToUcstrLossy for $ty {fn to_ucstr_lossy(&self) -> UCStr {let $self = self; $body}}
-    };
-}
-impl_to_ucstr_lossy! {ref this: UCStr {
-    this.clone()
+impl<T: ?Sized> ToUcstrLossy for &T
+where T: ToUcstrLossy
+{fn to_ucstr_lossy(&self) -> UCStr {T::to_ucstr_lossy(self)}}
+impl<T: ?Sized> ToUcstrLossy for &mut T
+where for<'a> &'a T: ToUcstrLossy
+{fn to_ucstr_lossy(&self) -> UCStr {((*self) as &T).to_ucstr_lossy()}}
+//
+//
+impl ToUcstrLossy for UCStr {fn to_ucstr_lossy(&self) -> UCStr {self.clone()}}
+impl ToUcstrLossy for str {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = self.replace('\0', "�");
+    let buf = unsafe {CString::from_vec_unchecked(buf.into_bytes())};
+    UCStr(UCStrValue::Heap(buf.into()))
 }}
-impl_to_ucstr_lossy! {ref this: str {
-    this.replace('\0', "�")
-        .try_into()
-        .unwrap()
-}}
-impl_to_ucstr_lossy! {ref this: String {
-    this.as_str().to_ucstr_lossy()
-}}
-impl_to_ucstr_lossy! {ref this: CStr {
-    let s = this.to_string_lossy();
+impl ToUcstrLossy for String {fn to_ucstr_lossy(&self) -> UCStr {self.as_str().to_ucstr_lossy()}}
+impl ToUcstrLossy for CStr {fn to_ucstr_lossy(&self) -> UCStr {
+    let s = self.to_string_lossy();
     let bytes = s.as_bytes();
     let mut v = Vec::with_capacity(bytes.len()+1);
     v.extend_from_slice(bytes);
     v.push(0);
-    let s = unsafe {CString::from_vec_unchecked(v)};
+    let s = unsafe {CString::from_vec_with_nul_unchecked(v)};
     UCStr(UCStrValue::Heap(s.into()))
 }}
-impl_to_ucstr_lossy! {ref this: CString {
-    this.as_c_str().to_ucstr_lossy()
+impl ToUcstrLossy for CString {fn to_ucstr_lossy(&self) -> UCStr {self.as_c_str().to_ucstr_lossy()}}
+impl ToUcstrLossy for Object<'_> {fn to_ucstr_lossy(&self) -> UCStr {self.to_string().to_ucstr_lossy()}}
+impl ToUcstrLossy for NonNullObject<'_> {fn to_ucstr_lossy(&self) -> UCStr {self.as_object().to_ucstr_lossy()}}
+// crate::class! (...) => impl ToUcstrLossy for ...
+impl ToUcstrLossy for () {fn to_ucstr_lossy(&self) -> UCStr {crate::ucstringify!(())}}
+impl ToUcstrLossy for char {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = format!("'{}'(U+{:08X})\0", self.escape_default(),*self as u32);
+    let buf = unsafe {CString::from_vec_with_nul_unchecked(buf.into_bytes())};
+    UCStr(UCStrValue::Heap(buf.into()))
 }}
-impl<'a, O: AsObject<'a>> ToUcstrLossy for O {
-    fn to_ucstr_lossy(&self) -> UCStr {
-        self.to_string()
-            .as_str()
-            .to_ucstr_lossy()
+impl ToUcstrLossy for bool {fn to_ucstr_lossy(&self) -> UCStr {
+    if *self {crate::ucstringify!(true)} else {crate::ucstringify!(false)}
+}}
+impl ToUcstrLossy for i8 {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = self.to_string().into_bytes();
+    let buf = unsafe {CString::from_vec_unchecked(buf)};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl ToUcstrLossy for i16 {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = self.to_string().into_bytes();
+    let buf = unsafe {CString::from_vec_unchecked(buf)};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl ToUcstrLossy for i32 {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = self.to_string().into_bytes();
+    let buf = unsafe {CString::from_vec_unchecked(buf)};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl ToUcstrLossy for i64 {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = self.to_string().into_bytes();
+    let buf = unsafe {CString::from_vec_unchecked(buf)};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl ToUcstrLossy for i128 {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = self.to_string().into_bytes();
+    let buf = unsafe {CString::from_vec_unchecked(buf)};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl ToUcstrLossy for isize {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = self.to_string().into_bytes();
+    let buf = unsafe {CString::from_vec_unchecked(buf)};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl ToUcstrLossy for u8 {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = self.to_string().into_bytes();
+    let buf = unsafe {CString::from_vec_unchecked(buf)};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl ToUcstrLossy for u16 {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = self.to_string().into_bytes();
+    let buf = unsafe {CString::from_vec_unchecked(buf)};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl ToUcstrLossy for u32 {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = self.to_string().into_bytes();
+    let buf = unsafe {CString::from_vec_unchecked(buf)};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl ToUcstrLossy for u64 {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = self.to_string().into_bytes();
+    let buf = unsafe {CString::from_vec_unchecked(buf)};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl ToUcstrLossy for u128 {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = self.to_string().into_bytes();
+    let buf = unsafe {CString::from_vec_unchecked(buf)};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl ToUcstrLossy for usize {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = self.to_string().into_bytes();
+    let buf = unsafe {CString::from_vec_unchecked(buf)};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl ToUcstrLossy for f32 {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = self.to_string().into_bytes();
+    let buf = unsafe {CString::from_vec_unchecked(buf)};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl ToUcstrLossy for f64 {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = self.to_string().into_bytes();
+    let buf = unsafe {CString::from_vec_unchecked(buf)};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl<T> ToUcstrLossy for *const T {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = format!("*const({:p})\0", self);
+    let buf = unsafe {CString::from_vec_with_nul_unchecked(buf.into_bytes())};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl<T> ToUcstrLossy for *mut T {fn to_ucstr_lossy(&self) -> UCStr {
+    let buf = format!("*mut({:p})\0", self);
+    let buf = unsafe {CString::from_vec_with_nul_unchecked(buf.into_bytes())};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+//
+//
+impl<T: ToUcstrLossy> ToUcstrLossy for Option<T> {fn to_ucstr_lossy(&self) -> UCStr {
+    if let Some(inner) = self {
+        let inner = inner.to_ucstr_lossy();
+        let mut buf = String::with_capacity(4 + 1 + inner.as_str().len() + 1 + 1);
+        buf.push_str("Some(");
+        buf.push_str(inner.as_str());
+        buf.push_str(")\0");
+        let buf = unsafe {CString::from_vec_with_nul_unchecked(buf.into_bytes())};
+        UCStr(UCStrValue::Heap(buf.into()))
+    } else {crate::ucstringify!(None)}
+}}
+impl<T: ToUcstrLossy> ToUcstrLossy for [T] {fn to_ucstr_lossy(&self) -> UCStr {
+    const SEPARATOR: &str = ", ";
+    let elems = self.iter()
+        .map(|i|i.to_ucstr_lossy())
+        .collect::<Box<[UCStr]>>();
+    let len = elems.iter()
+        .map(|s|s.as_str().len())
+        .sum::<usize>()
+        + (elems.len().saturating_sub(1))*SEPARATOR.len()
+        + 2
+        + 1;
+    let mut buf = String::with_capacity(len);
+    buf.push('[');
+    for (i, s) in elems.iter().enumerate() {
+        if i != 0 {buf.push_str(SEPARATOR);}
+        buf.push_str(s.as_str());
     }
+    buf.push(']');
+    buf.push('\0');
+    let buf = unsafe {CString::from_vec_with_nul_unchecked(buf.into_bytes())};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+impl<T: ToUcstrLossy, const LEN: usize> ToUcstrLossy for [T; LEN] {fn to_ucstr_lossy(&self) -> UCStr {self.as_slice().to_ucstr_lossy()}}
+impl<T: ToUcstrLossy> ToUcstrLossy for Vec<T> {fn to_ucstr_lossy(&self) -> UCStr {self.as_slice().to_ucstr_lossy()} }
+impl<T: ToUcstrLossy>
+ToUcstrLossy for (T,) {fn to_ucstr_lossy(&self) -> UCStr {
+    let s = self.0.to_ucstr_lossy();
+    let mut buf = String::with_capacity(s.as_str().len() + 3);
+    buf.push('(');
+    buf.push_str(s.as_str());
+    buf.push(')');
+    buf.push('\0');
+    let buf = unsafe {CString::from_vec_with_nul_unchecked(buf.into_bytes())};
+    UCStr(UCStrValue::Heap(buf.into()))
+}}
+macro_rules! tuple_to_ucstr {
+    ($elements:expr_2021) => {{
+        const SEPARATOR: &'static str = ", ";
+        let len = $elements.iter()
+            .map(|s|s.as_str().len())
+            .sum::<usize>()
+            + ($elements.len().saturating_sub(1))*SEPARATOR.len()
+            + 2
+            + 1;
+        let mut buf = String::with_capacity(len);
+        buf.push('(');
+        for (i, s) in $elements.iter().enumerate() {
+            if i != 0 {buf.push_str(SEPARATOR);}
+            buf.push_str(s.as_str());
+        }
+        buf.push(')');
+        buf.push('\0');
+        let buf = unsafe {CString::from_vec_with_nul_unchecked(buf.into_bytes())};
+        UCStr(UCStrValue::Heap(buf.into()))
+    }};
 }
-impl<'a> ToUcstrLossy for & as3::Object<'a> {fn to_ucstr_lossy(&self) -> UCStr {<as3::Object as ToUcstrLossy>::to_ucstr_lossy(*self)}}
-impl<'a> ToUcstrLossy for &mut as3::Object<'a> {fn to_ucstr_lossy(&self) -> UCStr {<as3::Object as ToUcstrLossy>::to_ucstr_lossy(*self)}}
-// crate::class! (...);
-impl_to_ucstr_lossy! {ref this: Option<O> {
-    if let Some(object) = this {
-        object.to_ucstr_lossy()
-    } else {crate::ucstringify!(null)}
-} <'a, O: AsObject<'a>> }
-impl_to_ucstr_lossy! {ref this: [O] {
-    this.iter()
-        .map(|object|object.to_string())
-        .collect::<Vec<String>>()
-        .join(", ")
-        .as_str()
-        .to_ucstr_lossy()
-} <'a, O: AsObject<'a>> }
-impl_to_ucstr_lossy! {ref this: [Option<O>] {
-    this.iter()
-        .map(|object|{
-            if let Some(object) = object {
-                object.to_string()
-            } else {String::from("null")}
-        })
-        .collect::<Vec<String>>()
-        .join(", ")
-        .as_str()
-        .to_ucstr_lossy()
-} <'a, O: AsObject<'a>> }
-impl_to_ucstr_lossy! {ref this: [O; LEN] {
-    this.as_slice().to_ucstr_lossy()
-} <'a, O: AsObject<'a>,
-const LEN: usize> }
-impl_to_ucstr_lossy! {ref this: [Option<O>; LEN] {
-    this.as_slice().to_ucstr_lossy()
-} <'a, O: AsObject<'a>,
-const LEN: usize> }
-impl_to_ucstr_lossy! {ref this: Vec<O> {
-    this.as_slice().to_ucstr_lossy()
-} <'a, O: AsObject<'a>> }
-impl_to_ucstr_lossy! {ref this: Vec<Option<O>> {
-    this.as_slice().to_ucstr_lossy()
-} <'a, O: AsObject<'a>> }
+impl<T: ToUcstrLossy, U: ToUcstrLossy>
+ToUcstrLossy for (T, U) {fn to_ucstr_lossy(&self) -> UCStr {
+    let elements =  [self.0.to_ucstr_lossy(), self.1.to_ucstr_lossy()];
+    tuple_to_ucstr! (elements)
+}}
+impl<T: ToUcstrLossy, U: ToUcstrLossy, V: ToUcstrLossy>
+ToUcstrLossy for (T, U, V) {fn to_ucstr_lossy(&self) -> UCStr {
+    let elements = [self.0.to_ucstr_lossy(), self.1.to_ucstr_lossy(), self.2.to_ucstr_lossy()];
+    tuple_to_ucstr! (elements)
+}}
+impl<T: ToUcstrLossy, U: ToUcstrLossy, V: ToUcstrLossy, W: ToUcstrLossy>
+ToUcstrLossy for (T, U, V, W) {fn to_ucstr_lossy(&self) -> UCStr {
+    let elements = [self.0.to_ucstr_lossy(), self.1.to_ucstr_lossy(), self.2.to_ucstr_lossy(), self.3.to_ucstr_lossy()];
+    tuple_to_ucstr! (elements)
+}}
+impl<T: ToUcstrLossy, U: ToUcstrLossy, V: ToUcstrLossy, W: ToUcstrLossy, X: ToUcstrLossy>
+ToUcstrLossy for (T, U, V, W, X) {fn to_ucstr_lossy(&self) -> UCStr {
+    let elements = [self.0.to_ucstr_lossy(), self.1.to_ucstr_lossy(), self.2.to_ucstr_lossy(), self.3.to_ucstr_lossy(), self.4.to_ucstr_lossy()];
+    tuple_to_ucstr! (elements)
+}}
+impl<T: ToUcstrLossy, U: ToUcstrLossy, V: ToUcstrLossy, W: ToUcstrLossy, X: ToUcstrLossy, Y: ToUcstrLossy>
+ToUcstrLossy for (T, U, V, W, X, Y) {fn to_ucstr_lossy(&self) -> UCStr {
+    let elements = [self.0.to_ucstr_lossy(), self.1.to_ucstr_lossy(), self.2.to_ucstr_lossy(), self.3.to_ucstr_lossy(), self.4.to_ucstr_lossy(), self.5.to_ucstr_lossy()];
+    tuple_to_ucstr! (elements)
+}}
+impl<T: ToUcstrLossy, U: ToUcstrLossy, V: ToUcstrLossy, W: ToUcstrLossy, X: ToUcstrLossy, Y: ToUcstrLossy, Z: ToUcstrLossy>
+ToUcstrLossy for (T, U, V, W, X, Y, Z) {fn to_ucstr_lossy(&self) -> UCStr {
+    let elements = [self.0.to_ucstr_lossy(), self.1.to_ucstr_lossy(), self.2.to_ucstr_lossy(), self.3.to_ucstr_lossy(), self.4.to_ucstr_lossy(), self.5.to_ucstr_lossy(), self.6.to_ucstr_lossy()];
+    tuple_to_ucstr! (elements)
+}}
+impl<T: ToUcstrLossy, U: ToUcstrLossy, V: ToUcstrLossy, W: ToUcstrLossy, X: ToUcstrLossy, Y: ToUcstrLossy, Z: ToUcstrLossy, A: ToUcstrLossy>
+ToUcstrLossy for (T, U, V, W, X, Y, Z, A) {fn to_ucstr_lossy(&self) -> UCStr {
+    let elements = [self.0.to_ucstr_lossy(), self.1.to_ucstr_lossy(), self.2.to_ucstr_lossy(), self.3.to_ucstr_lossy(), self.4.to_ucstr_lossy(), self.5.to_ucstr_lossy(), self.6.to_ucstr_lossy(), self.7.to_ucstr_lossy()];
+    tuple_to_ucstr! (elements)
+}}
 
