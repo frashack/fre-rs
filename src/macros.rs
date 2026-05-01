@@ -348,7 +348,7 @@ macro_rules! function {
 /// Accepts a unique class name as an argument.
 /// 
 /// By default, the generated class implements [`PartialEq<Self>`] and [`Eq`]
-/// using pointer equality. This can be disabled by adding the `!PartialEq` modifier.
+/// using pointer equality. This can be disabled by adding the `?PartialEq` modifier.
 /// 
 /// # Examples
 /// 
@@ -362,7 +362,7 @@ macro_rules! function {
 ///             .as_unchecked()}
 ///     }
 /// }
-/// fre_rs::class! (XML !PartialEq);
+/// fre_rs::class! (XML: ?PartialEq);
 /// impl PartialEq for XML<'_> {
 ///     fn eq(&self, other: &Self) -> bool {todo!()}
 /// }
@@ -430,7 +430,7 @@ macro_rules! class {
     // #3
     {@Define
         $(#[$meta:meta])*
-        $name:ident !PartialEq
+        $name:ident: ?PartialEq
     } => {
         $(#[$meta])*
         #[derive(::std::fmt::Debug, Clone, Copy)]

@@ -8,7 +8,7 @@ crate::class! {
     /// Some methods are not yet implemented.
     /// 
     #[allow(non_camel_case_types)]
-    int !PartialEq
+    int: ?PartialEq
 }
 impl PartialEq for int<'_> {fn eq(&self, other: &Self) -> bool {self.value() == other.value()}}
 impl PartialEq<i32> for int<'_> {fn eq(&self, other: &i32) -> bool {self.value() == *other}}
@@ -38,7 +38,7 @@ crate::class! {
     /// Some methods are not yet implemented.
     /// 
     #[allow(non_camel_case_types)]
-    uint !PartialEq
+    uint: ?PartialEq
 }
 impl PartialEq for uint<'_> {fn eq(&self, other: &Self) -> bool {self.value() == other.value()}}
 impl PartialEq<u32> for uint<'_> {fn eq(&self, other: &u32) -> bool {self.value() == *other}}
@@ -67,7 +67,7 @@ crate::class! {@Typeof
     /// 
     /// Some methods are not yet implemented.
     /// 
-    Number !PartialEq
+    Number: ?PartialEq
 }
 impl PartialEq for Number<'_> {fn eq(&self, other: &Self) -> bool {self.value() == other.value()}}
 impl PartialEq<f64> for Number<'_> {fn eq(&self, other: &f64) -> bool {self.value() == *other}}
@@ -93,7 +93,7 @@ impl<'a> Number<'a> {
 crate::class! {@Typeof
     /// A reference to the AS3 object `Boolean`.
     /// 
-    Boolean !PartialEq
+    Boolean: ?PartialEq
 }
 impl PartialEq for Boolean<'_> {fn eq(&self, other: &Self) -> bool {self.value() == other.value()}}
 impl PartialEq<bool> for Boolean<'_> {fn eq(&self, other: &bool) -> bool {self.value() == *other}}
@@ -127,7 +127,7 @@ crate::class! {@Typeof
     /// 
     /// Some methods are not yet implemented.
     /// 
-    String !PartialEq
+    String: ?PartialEq
 }
 impl PartialEq for String<'_> {fn eq(&self, other: &Self) -> bool {self.value() == other.value()}}
 impl PartialEq<str> for String<'_> {fn eq(&self, other: &str) -> bool {self.value() == other}}
