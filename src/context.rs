@@ -14,12 +14,12 @@ pub(crate) type ContextHandle = NonNull<c_void>;
 ///
 /// The lifetime is strictly tied to the function call stack.
 ///
-/// # Invariant
+/// # Invariants
 /// 
 /// During any context-related call, the current context is guaranteed to be
-/// valid, and its associated `ExtensionContext` object must not call `dispose`.
+/// valid, and its associated AS3 `ExtensionContext` object must not call `dispose`.
 ///
-/// Violating this invariant may cause subsequent API calls to fail and lead to
+/// Violating these invariants may cause subsequent API calls to fail and lead to
 /// rapidly increasing complexity in error handling. This crate treats such
 /// situations as invalid state and does not attempt to recover from them.
 /// 
@@ -105,43 +105,6 @@ impl<'a> CurrentContext<'a> {
     /// 
     pub fn set_actionscript_data (&self, object: Object<'_>)
     {self.as_cooperative_ctx().set_actionscript_data(object).expect("INVARIANT: `CurrentContext` is always valid.");}
-
-    /// Returns the associated context from an `ExtensionContext` object.
-    /// 
-    /// # Safety
-    ///
-    /// `context` must be another context constructed by the current
-    /// extension via [`ContextInitializer`]. Otherwise, the invariants
-    /// of [`CooperativeContext`] are violated, and its internal APIs
-    /// for accessing native data will result in undefined behavior.
-    /// 
-    /// # Panics
-    /// 
-    /// Panics if `context` is not an `ExtensionContext` object,
-    /// or if it is associated with the current context.
-    /// 
-    #[allow(unsafe_op_in_unsafe_fn)]
-    pub unsafe fn cooperative_context_from_object(&self, context: Object<'a>) -> CooperativeContext<'a> {
-        transmute(self.foreign_context_from_object(context))
-    }
-
-    /// Returns the associated context from an `ExtensionContext` object.
-    /// 
-    /// # Panics
-    /// 
-    /// Panics if `context` is not an `ExtensionContext` object,
-    /// or if it is associated with the current context.
-    /// 
-    pub fn foreign_context_from_object(&self, context: Object<'a>) -> ForeignContext<'a> {
-        let mut handle = MaybeUninit::<FREContext>::uninit();
-        let r = unsafe {FREGetFREContextFromExtensionContext(context.as_ptr(), handle.as_mut_ptr())};
-        let handle = unsafe {handle.assume_init()};
-        assert!(r.is_ok(), "{}", FfiError::try_from(r).expect("The result must be error."));
-        assert!(!handle.is_null());
-        assert_ne!(handle, self.as_ptr(), "INVARIANT: `CurrentContext` is unique.");
-        unsafe {transmute(handle)}
-    }
-
 }
 impl<'a> CurrentContext<'a> {
     fn new(ctx: &'a FREContext) -> Self {
@@ -173,8 +136,6 @@ impl<'a> Context<'a> for CurrentContext<'a> {
 
 /// A handle to a context created by the current extension,
 /// which may become invalid under specific conditions.
-/// 
-/// Can only be obtained through [`CurrentContext::cooperative_context_from_object`].
 ///
 /// Invalidity only occurs after the associated `ExtensionContext` object
 /// has been disposed. Therefore, callers should be prepared for operations
@@ -183,16 +144,33 @@ impl<'a> Context<'a> for CurrentContext<'a> {
 /// This crate leverages [`FREGetFREContextFromExtensionContext`] to enable
 /// more advanced use cases, but doing so also increases overall complexity.
 /// 
-/// # Invariant
+/// # Invariants
 /// 
 /// The context must have been constructed by the current extension via
-/// [`ContextInitializer`], and it must not be the [`CurrentContext`].
+/// [`extension!`] and [`ContextInitializer`], and it must not be the [`CurrentContext`].
 /// Violating these invariants may results in undefined behavior.
 ///
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct CooperativeContext <'a> (ContextHandle, PhantomData<&'a()>);
 impl<'a> CooperativeContext<'a> {
+    
+    /// Returns the associated context from an AS3 `ExtensionContext` object.
+    /// 
+    /// # Safety
+    ///
+    /// `context` must be another context constructed by the current extension
+    /// via [`extension!`] and [`ContextInitializer`]. Otherwise, the invariants
+    /// of [`CooperativeContext`] are violated, and its internal APIs
+    /// for accessing native data will result in undefined behavior.
+    /// 
+    /// # Errors
+    /// 
+    /// - [`ContextError::FfiCallFailed`] If `context` is not an `ExtensionContext` object.
+    /// - [`ContextError::ContextConflict`] If it is associated with the current context.
+    /// 
+    pub unsafe fn from_object(context: NonNullObject<'a>) -> Result<Self, ContextError> {ForeignContext::from_object(context).map(|ctx|Self(ctx.0, PhantomData))}
+
 
     /// Provides immutable access to the [`ContextRegistry`] within a closure.
     /// 
@@ -279,8 +257,6 @@ impl<'a> Context<'a> for CooperativeContext<'a> {
 
 /// A handle to a context that may become invalid under specific conditions.
 /// 
-/// Can only be obtained through [`CurrentContext::foreign_context_from_object`].
-/// 
 /// Assumes the context was NOT constructed by the current extension.
 /// Accessing its associated native data is therefore unsafe.
 ///
@@ -296,6 +272,22 @@ impl<'a> Context<'a> for CooperativeContext<'a> {
 pub struct ForeignContext <'a> (ContextHandle, PhantomData<&'a()>);
 impl<'a> ForeignContext<'a> {
     
+    /// Returns the associated context from an AS3 `ExtensionContext` object.
+    /// 
+    /// # Errors
+    /// 
+    /// - [`ContextError::FfiCallFailed`] If `context` is not an `ExtensionContext` object.
+    /// - [`ContextError::ContextConflict`] If it is associated with the current context.
+    /// 
+    pub fn from_object(context: NonNullObject<'a>) -> Result<Self, ContextError> {
+        let mut handle = MaybeUninit::<FREContext>::uninit();
+        let r = unsafe {FREGetFREContextFromExtensionContext(context.as_ptr(), handle.as_mut_ptr())};
+        if let Ok(e) = FfiError::try_from(r) {return Err(e.into());}
+        let handle = ContextHandle::new(unsafe {handle.assume_init()}).expect("Unexpected null pointer.");
+        if handle == stack::current_context().0 {return Err(ContextError::ContextConflict);}
+        Ok(Self(handle, PhantomData))
+    }
+
     /// Returns a pointer to the native data. Callers must understand its memory
     /// layout and explicitly treat it as either a borrow or a move.
     /// 

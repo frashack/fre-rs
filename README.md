@@ -30,7 +30,7 @@ The primary entry points of this crate are the macros [`extension!`](https://doc
 
 Refer to their documentation for details and examples.
 
-## Example
+## Examples
 
 ```rust
 use fre_rs::prelude::*;

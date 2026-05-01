@@ -9,7 +9,7 @@
 //! # Flash Runtime Extension Lifecycle
 //!
 //! ```text
-//!                                   Flash-runtime ━━━━┓
+//!                                   Flash-Runtime ━━━━┓
 //!                                                     ┃
 //!          ExtensionContext.loadExtension ━━━━━━━━━━━━┫
 //!                ↓                                    ┃

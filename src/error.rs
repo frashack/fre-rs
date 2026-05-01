@@ -120,6 +120,7 @@ pub enum ContextError {
     MethodNotFound,
     FfiCallFailed(FfiError),
     BorrowRegistryConflict,
+    ContextConflict,
 }
 impl Display for ContextError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
