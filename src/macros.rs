@@ -228,7 +228,7 @@ macro_rules! function {
         $name:ident ($($arguments:tt)+) $(-> $return_type:ty)? $body:block
     } => {
         #[allow(non_upper_case_globals)]
-        pub const $name: &'static $crate::function::FunctionImplementation = & $crate::function::FunctionImplementation::new(
+        pub const $name: &'static $crate::function::FunctionImplementation = & $crate::__private::function::implement(
             $crate::ucstringify! ($name), {
             #[allow(unsafe_op_in_unsafe_fn)]
             unsafe extern "C" fn abi(
@@ -256,7 +256,7 @@ macro_rules! function {
         $name:ident use $func:path
     ) => {
         #[allow(non_upper_case_globals)]
-        pub const $name: &'static $crate::function::FunctionImplementation = & $crate::function::FunctionImplementation::new(
+        pub const $name: &'static $crate::function::FunctionImplementation = & $crate::__private::function::implement(
             $crate::ucstringify! ($name), {
             #[allow(unsafe_op_in_unsafe_fn)]
             unsafe extern "C" fn abi(

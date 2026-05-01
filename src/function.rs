@@ -34,21 +34,19 @@ pub type ContextFinalizer = fn (ctx: &CurrentContext);
 pub type Function <'a> = fn (ctx: &CurrentContext<'a>, func_data: Option<&mut dyn Any>, args: &[Object<'a>]) -> Object<'a>;
 
 
-/// **In typical usage of this crate, instances of this type should not be constructed directly.**
+/// Represents a native function implementation that can be registered as a method.
 /// 
-/// The [`function!`] macro should be used to construct this type, as it provides a safer abstraction.
+/// Can only be constructed through the [`function!`] macro.
 /// 
 #[derive(Debug)]
 pub struct FunctionImplementation {
-    raw_name: UCStr,
-    raw_func: FREFunction,
+    name: UCStr,
+    func: FREFunction,
 }
 impl FunctionImplementation {
-    pub fn raw_name(&self) -> &UCStr {&self.raw_name}
-    pub fn raw_func(&self) -> FREFunction {self.raw_func}
-    pub const fn new (raw_name: UCStr, raw_func: FREFunction) -> Self {
-        Self { raw_name, raw_func }
-    }
+    pub fn name(&self) -> &UCStr {&self.name}
+    pub fn func(&self) -> FREFunction {self.func}
+    pub(crate) const fn new (name: UCStr, func: FREFunction) -> Self {Self { name, func }}
 }
 
 
@@ -78,29 +76,31 @@ impl FunctionSet {
     }
 
     /// Adds a function that can be registered as a method.
-    ///
+    /// 
+    /// # Parameters
+    /// 
     /// - `name`: The method name. If [`None`], the raw name of `func_impl` is used.
     /// - `func_data`: Data associated with this method. It will be dropped after [`ContextFinalizer`] returns.
-    /// - `func_impl`: The method implementation created by the [`crate::function!`] macro.
+    /// - `func_impl`: The method implementation created by the [`function!`] macro.
     /// 
     /// # Panics
-    ///
+    /// 
     /// Panics if a function with the same `name` has already been added.
-    ///
+    /// 
     /// Callers must ensure that each `name` is unique within this set. 
     /// 
     pub fn add (
         &mut self,
         name: Option<UCStr>,
         func_data: Option<Box<dyn Any>>,
-        func_impl: &FunctionImplementation,
+        func_impl: &'static FunctionImplementation,
     ) {
-        let name = name.unwrap_or(func_impl.raw_name.clone());
+        let name = name.unwrap_or(func_impl.name.clone());
         let index = self.list.len();
         self.list.push(FRENamedFunction {
             name: name.as_ptr(),
             functionData: if let Some(func_data) = func_data {crate::data::into_raw(func_data).as_ptr()} else {FREData::default()},
-            function: func_impl.raw_func,
+            function: func_impl.func,
         });
         let r = self.map.insert(name, index);
         assert!(r.is_none(), "Method name conflict.");

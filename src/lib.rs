@@ -123,5 +123,10 @@ pub mod __private {
     pub mod context {
         pub use crate::context::stack::{with, with_initializer, with_method};
     }
+    pub mod function {
+        use crate::*;
+        use crate::function::FunctionImplementation;
+        pub const fn implement (name: UCStr, func: FREFunction) -> FunctionImplementation {FunctionImplementation::new(name, func)}
+    }
 }
 
